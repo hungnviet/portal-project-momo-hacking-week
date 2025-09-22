@@ -4,12 +4,12 @@ import { getListGeneralInfoOfJiraTicket } from '@/lib/get-general-info-of-list-j
 
 function calculateProgress(taskList: any[]) {
   if (!taskList || taskList.length === 0) return 0;
-  
+
   const completedStatuses = ['Done', 'Closed', 'Resolved', 'Complete'];
-  const completedTasks = taskList.filter(task => 
+  const completedTasks = taskList.filter(task =>
     completedStatuses.includes(task.ticketStatus)
   ).length;
-  
+
   return Math.round((completedTasks / taskList.length) * 100);
 }
 
@@ -84,11 +84,11 @@ export async function GET(request: NextRequest) {
 
     // Fetch comprehensive Jira ticket information
     let taskList: any[] = [];
-    
+
     if (jiraUrls.length > 0) {
       try {
         const jiraTicketsInfo = await getListGeneralInfoOfJiraTicket(jiraUrls);
-        
+
         // Map the fetched data to the task list format
         taskList = jiraTicketsInfo.map(ticket => ({
           id: ticket.id,
@@ -98,13 +98,14 @@ export async function GET(request: NextRequest) {
           ticketPriority: ticket.ticketPriority,
           assignee: ticket.assignee,
           startdate: ticket.startdate,
+          duedate: ticket.duedate,
           ticketKey: ticket.ticketKey,
           projectName: ticket.projectName,
           ticketType: ticket.ticketType,
           url: ticket.url,
           type: 'jiraTicket' as const
         }));
-        
+
         console.log(`✅ Successfully fetched ${taskList.length} Jira tickets`);
       } catch (error) {
         console.error('Error fetching Jira tickets:', error);
@@ -123,10 +124,10 @@ export async function GET(request: NextRequest) {
     // Handle non-Jira tasks (Google Sheets, etc.) - keep original logic for these
     const nonJiraTasks = (tasks || [])
       .filter(task => task.url && !task.url.includes('atlassian.net') && !task.url.includes('jira'));
-    
+
     if (nonJiraTasks.length > 0) {
       console.log(`📋 Found ${nonJiraTasks.length} non-Jira tasks (e.g., Google Sheets)`);
-      
+
       const nonJiraTaskData = nonJiraTasks.map(task => ({
         type: task.url.includes('docs.google.com/spreadsheets') ? 'rowSheet' as const : 'unknown' as const,
         url: task.url,
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
         assignee: 'Unknown',
         note: 'Non-Jira task - detailed fetching not implemented'
       }));
-      
+
       taskList = [...taskList, ...nonJiraTaskData];
     }
 

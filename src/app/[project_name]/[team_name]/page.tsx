@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
 import { apiService, type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse } from '../../../service';
+import { start } from 'repl';
 
 // Interface for the component's team data structure
 interface TeamData {
@@ -24,7 +25,8 @@ interface TeamData {
     status: string;
     assignee: string;
     priority: string;
-    dueDate: string;
+    startdate: string;
+    duedate: string;
     jiraUrl?: string;
     sheetUrl?: string;
     type: 'jira' | 'sheet';
@@ -35,16 +37,17 @@ interface TeamData {
 /**
  * Transform API task data to component ticket structure
  */
-const transformTaskToTicket = (task: TaskData, index: number) => {
+const transformTaskToTicket = (task: TaskData, index: number, teamAssignee?: string) => {
   const isJira = task.type === 'jiraTicket';
 
   return {
-    id: `${task.type.toUpperCase()}-${index + 1}`,
-    title: task.taskDesc,
-    status: task.taskStatus,
-    assignee: task.taskAssignee,
-    priority: 'Medium', // API doesn't provide priority, so we set a default
-    dueDate: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Mock due date
+    id: task.id,
+    title: task.ticketName,
+    status: task.ticketStatus,
+    assignee: task.assignee, // Use team assignee as fallback
+    priority: task.ticketPriority || 'Medium', // Use API priority or default
+    startdate: task.startdate || '', // Use API startdate or today
+    duedate: task.duedate || '', // Use API duedate or today
     jiraUrl: isJira ? task.url : undefined,
     sheetUrl: !isJira ? task.url : undefined,
     type: isJira ? 'jira' as const : 'sheet' as const,
@@ -60,7 +63,9 @@ const transformApiResponseToTeamData = (
   teamName: string,
   projectName: string
 ): TeamData => {
-  const tickets = apiData.taskList.map(transformTaskToTicket);
+  const tickets = apiData.taskList.map((task, index) =>
+    transformTaskToTicket(task, index, apiData.assignee)
+  );
   const completedTickets = tickets.filter(t =>
     t.status.toLowerCase().includes('done') ||
     t.status.toLowerCase().includes('complete') ||
@@ -347,7 +352,7 @@ export default function TeamDetailPage() {
         </div>
 
         {/* Team Header */}
-        <TeamHeader team={teamData} />
+        <TeamHeader team={{ ...teamData, tickets: teamData.tickets }} />
 
         {/* Tickets Section */}
         <div className="bg-white rounded-lg shadow-sm p-6">

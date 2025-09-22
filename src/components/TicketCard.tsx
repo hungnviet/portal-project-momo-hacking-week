@@ -4,7 +4,8 @@ interface Ticket {
   status: string;
   assignee: string;
   priority: string;
-  dueDate: string;
+  startdate: string;
+  duedate: string;
   type: string;
   jiraUrl?: string;
   sheetUrl?: string;
@@ -91,7 +92,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           </span>
         </div>
         <div>
-          <span className="font-medium">Due:</span> {ticket.dueDate}
+          <span className="font-medium">Due:</span> {ticket.duedate}
         </div>
       </div>
 
