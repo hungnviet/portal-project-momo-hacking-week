@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (projectError) {
+      console.log(projectError)
       return NextResponse.json({
         status: 'error',
         errorCode: 'DB_ERROR',
@@ -198,7 +199,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Calculate progress (simplified - would need to fetch actual task data)
-        const teamProgress = tasks && tasks.length > 0 ? 
+        const teamProgress = tasks && tasks.length > 0 ?
           Math.min(Math.round(Math.random() * 100), 100) : 0;
 
         return {
@@ -212,14 +213,14 @@ export async function GET(request: NextRequest) {
     );
 
     // Calculate overall progress
-    const overallProgress = teamList.length > 0 ? 
+    const overallProgress = teamList.length > 0 ?
       Math.round(teamList.reduce((sum, team) => sum + team.teamProgress, 0) / teamList.length) : 0;
 
     // Determine status
     const currentDate = new Date();
     const startDate = new Date(project.start_date);
     const endDate = new Date(project.end_date);
-    
+
     let status = 'Planning';
     if (currentDate >= startDate && currentDate <= endDate) {
       status = overallProgress === 100 ? 'Completed' : 'In Progress';
