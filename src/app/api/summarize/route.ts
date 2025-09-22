@@ -21,23 +21,47 @@ interface SummaryResponse {
 // This function would fetch context based on teamId and projectId
 // You'll need to implement this based on your database/data source
 async function getContextByTeamAndProject(teamId: string, projectId: string): Promise<string> {
-  // TODO: Replace this with your actual data fetching logic
-  // Example implementations:
-  
-  // Option 1: Database query
-  // const context = await db.projects.findFirst({
-  //   where: { teamId, projectId },
-  //   select: { content: true, description: true, notes: true }
-  // });
-  // return context ? `${context.content} ${context.description} ${context.notes}` : '';
-  
-  // Option 2: API call to another service
-  // const response = await fetch(`${process.env.API_BASE_URL}/teams/${teamId}/projects/${projectId}`);
-  // const data = await response.json();
-  // return data.content || '';
-  
-  // Placeholder implementation
-  return `This is placeholder context for team ${teamId} and project ${projectId}. Replace this function with your actual context retrieval logic from your database or data source.`;
+  // STEP 1: Fetch your actual data (replace placeholder with real fetching logic)
+  // Example:
+  // const project = await db.projects.findFirst({ where: { id: projectId, teamId } });
+  // const tasks = await db.tasks.findMany({ where: { projectId } });
+  // const team = await db.teams.findFirst({ where: { id: teamId } });
+
+  const projectDescription = "Room Management System for internal scheduling. Focus: reliability, availability, security.";
+  const teamDescription = "6-person team: 2 UI devs, 2 DB engineers, 2 backend engineers.";
+  const tasksTable = `
+| Task | Assignee | Due Date | Priority | Status | Notes |
+|------|----------|----------|----------|--------|-------|
+| Setup Nginx gateway | Loc | 2025-09-25 | High | In Progress | 80% done |
+| Build booking API | Alice | 2025-09-27 | High | Not Started | Waiting for DB schema |
+| Design DB schema | Bob | 2025-09-23 | High | Completed | Reviewed by backend team |
+| Implement caching layer | Carol | 2025-09-28 | Medium | In Progress | Redis container running |
+  `;
+
+  // STEP 2: Build a single string with the prompt template
+  const prompt = `
+Generate a structured progress report based on the provided project context and task details.
+
+### Project Context
+${projectDescription}
+
+### Team Context
+${teamDescription}
+
+### Task Details
+${tasksTable}
+
+### Requirements for Report
+1. **Executive Summary** - 3-4 sentences summarizing project health (on-track, delayed, etc.).
+2. **Completed Work** - Bullet points of tasks finished since last report.
+3. **Ongoing Work** - Bullet points of tasks in progress, with percent complete if possible.
+4. **Upcoming Work** - Next priorities or tasks due soon, ordered by priority.
+5. **Blockers/Risks** - List anything causing delays or requiring escalation.
+6. **Action Items** - Recommended actions for team or stakeholders.
+
+Format the report in clear sections with headings, making it easy to scan quickly.
+`;
+  return prompt;
 }
 
 export async function GET(request: NextRequest) {
@@ -94,14 +118,14 @@ export async function GET(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that creates concise and accurate summaries of project content. Focus on key features, main objectives, and important details."
+          content: "You are an assistant that generates clear, concise, and actionable progress reports for project management. You summarize status updates, highlight blockers, and suggest next steps in a professional tone."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      max_tokens: 300,
+      max_tokens: 500,
       temperature: 0.5,
     });
 

@@ -62,9 +62,9 @@ const transformApiResponseToTeamData = (
 ): TeamData => {
   const tickets = apiData.taskList.map(transformTaskToTicket);
   const completedTickets = tickets.filter(t =>
-    t.status.toLowerCase().includes('done') ||
-    t.status.toLowerCase().includes('complete') ||
-    t.status.toLowerCase().includes('closed')
+    t.status?.toLowerCase().includes('done') ||
+    t.status?.toLowerCase().includes('complete') ||
+    t.status?.toLowerCase().includes('closed')
   ).length;
 
   // Determine track method based on the majority of task types
