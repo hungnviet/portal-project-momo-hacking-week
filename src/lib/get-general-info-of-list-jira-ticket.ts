@@ -7,6 +7,7 @@ export interface JiraTicketGeneralInfo {
   ticketPriority: string;
   assignee?: string;
   startdate: string;
+  duedate: string;
   // Additional useful fields
   ticketKey: string;
   projectName: string;
@@ -30,11 +31,11 @@ export async function getListGeneralInfoOfJiraTicket(listUrl: string[]): Promise
   // Process tickets in parallel with a concurrency limit to avoid overwhelming the API
   const concurrencyLimit = 5; // Fetch max 5 tickets at once
   const results: JiraTicketGeneralInfo[] = [];
-  
+
   for (let i = 0; i < listUrl.length; i += concurrencyLimit) {
     const batch = listUrl.slice(i, i + concurrencyLimit);
     console.log(`📦 Processing batch ${Math.floor(i / concurrencyLimit) + 1}/${Math.ceil(listUrl.length / concurrencyLimit)}`);
-    
+
     const batchPromises = batch.map(async (url, index) => {
       try {
         const ticketInfo = await fetchSingleTicketGeneralInfo(url);
@@ -52,11 +53,11 @@ export async function getListGeneralInfoOfJiraTicket(listUrl: string[]): Promise
     });
 
     const batchResults = await Promise.all(batchPromises);
-    
+
     // Filter out null results and add to main results
     const validResults = batchResults.filter((result): result is JiraTicketGeneralInfo => result !== null);
     results.push(...validResults);
-    
+
     // Small delay between batches to be nice to the API
     if (i + concurrencyLimit < listUrl.length) {
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -81,7 +82,7 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
     }
 
     const { baseUrl, issueKey } = urlParts;
-    
+
     // Get authentication details from environment
     const jiraAuth = process.env.JIRA_AUTH_TOKEN;
     const jiraEmail = process.env.JIRA_EMAIL;
@@ -105,15 +106,17 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
     const params = new URLSearchParams({
       fields: [
         'id',
-        'key', 
+        'key',
         'summary',
-        'description', 
+        'description',
         'status',
         'priority',
         'assignee',
         'created',
         'project',
-        'issuetype'
+        'issuetype',
+        'startdate',
+        'duedate',
       ].join(',')
     });
 
@@ -141,6 +144,8 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
 
     const rawData = await response.json();
 
+    console.log(`Fetched data for ${issueKey}:`, rawData);
+
     // Transform to general info format
     const generalInfo: JiraTicketGeneralInfo = {
       id: rawData.id,
@@ -150,7 +155,8 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
       ticketStatus: rawData.fields.status?.name || 'Unknown',
       ticketPriority: rawData.fields.priority?.name || 'None',
       assignee: rawData.fields.assignee?.displayName,
-      startdate: rawData.fields.created || '',
+      startdate: rawData.fields.startdate || '',
+      duedate: rawData.fields.duedate || '',
       projectName: rawData.fields.project?.name || 'Unknown Project',
       ticketType: rawData.fields.issuetype?.name || 'Unknown',
       url: jiraUrl
@@ -172,19 +178,19 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
 function parseJiraUrl(jiraUrl: string): { baseUrl: string; issueKey: string } | null {
   try {
     const url = new URL(jiraUrl);
-    
+
     // Extract base URL (protocol + host)
     const baseUrl = `${url.protocol}//${url.host}`;
-    
+
     // Extract issue key from path
     // Supports formats like: /browse/PROJ-123, /projects/PROJ/issues/PROJ-123
     const pathMatch = url.pathname.match(/\/(?:browse|issues)\/([A-Z0-9]+-\d+)/i);
     if (!pathMatch) {
       return null;
     }
-    
+
     const issueKey = pathMatch[1];
-    
+
     return { baseUrl, issueKey };
   } catch (error) {
     return null;
@@ -198,15 +204,15 @@ function parseJiraUrl(jiraUrl: string): { baseUrl: string; issueKey: string } | 
  */
 function extractTextFromDescription(description: any): string {
   if (!description) return '';
-  
+
   if (typeof description === 'string') {
     return description;
   }
-  
+
   // Handle ADF format
   if (description.type === 'doc' && description.content) {
     let text = '';
-    
+
     function extractText(node: any): void {
       if (node.type === 'text') {
         text += node.text;
@@ -214,10 +220,10 @@ function extractTextFromDescription(description: any): string {
         node.content.forEach(extractText);
       }
     }
-    
+
     description.content.forEach(extractText);
     return text.trim();
   }
-  
+
   return JSON.stringify(description);
 }

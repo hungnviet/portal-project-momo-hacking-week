@@ -76,9 +76,17 @@ interface TeamDetails {
 interface TaskData {
     type: 'rowSheet' | 'jiraTicket' | 'unknown';
     url: string;
-    taskDesc: string;
-    taskStatus: string;
-    taskAssignee: string;
+    id: string;
+    ticketName: string;
+    ticketDescription: string;
+    ticketStatus: string;
+    ticketPriority: string;
+    assignee: string;
+    startdate: string;
+    duedate: string;
+    ticketKey: string;
+    projectName: string;
+    ticketType: string;
 }
 
 interface TeamApiResponse {
