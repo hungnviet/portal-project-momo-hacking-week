@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
 import { apiService, type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse } from '../../../service';
-import { start } from 'repl';
+import { url } from 'inspector';
 
 // Interface for the component's team data structure
 interface TeamData {
@@ -27,18 +27,16 @@ interface TeamData {
     priority: string;
     startdate: string;
     duedate: string;
-    jiraUrl?: string;
-    sheetUrl?: string;
+    url: string;
     type: 'jira' | 'sheet';
-    rowNumber?: number;
   }>;
 }
 
 /**
  * Transform API task data to component ticket structure
  */
-const transformTaskToTicket = (task: TaskData, index: number, teamAssignee?: string) => {
-  const isJira = task.type === 'jiraTicket';
+const transformTaskToTicket = (task: TaskData, index: number) => {
+  const isJira = task.type === 'jira';
 
   return {
     id: task.id,
@@ -48,10 +46,8 @@ const transformTaskToTicket = (task: TaskData, index: number, teamAssignee?: str
     priority: task.ticketPriority || 'Medium', // Use API priority or default
     startdate: task.startdate || '', // Use API startdate or today
     duedate: task.duedate || '', // Use API duedate or today
-    jiraUrl: isJira ? task.url : undefined,
-    sheetUrl: !isJira ? task.url : undefined,
+    url: task.url,
     type: isJira ? 'jira' as const : 'sheet' as const,
-    rowNumber: !isJira ? index + 1 : undefined
   };
 };
 
@@ -64,7 +60,7 @@ const transformApiResponseToTeamData = (
   projectName: string
 ): TeamData => {
   const tickets = apiData.taskList.map((task, index) =>
-    transformTaskToTicket(task, index, apiData.assignee)
+    transformTaskToTicket(task, index)
   );
   const completedTickets = tickets.filter(t =>
     t.status?.toLowerCase().includes('done') ||
@@ -222,7 +218,7 @@ export default function TeamDetailPage() {
         setAddingTask(true);
 
         // Determine task type based on the team's track method
-        const taskType = teamData.trackMethod === 'jira' ? 'jiraTicket' : 'rowSheet';
+        const taskType = teamData.trackMethod === 'jira' ? 'jira' : 'sheet';
 
         // Call the addTask API
         const response = await apiService.addTask(teamId, projectId, {

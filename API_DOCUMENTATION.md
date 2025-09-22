@@ -168,14 +168,14 @@ All API responses follow this standard format:
     "progress": 70,
     "taskList": [
       {
-        "type": "jiraTicket",
+        "type": "jira",
         "url": "https://company.atlassian.net/browse/PROJ-123",
         "taskDesc": "Implement user authentication",
         "taskStatus": "In Progress",
         "taskAssignee": "John Doe"
       },
       {
-        "type": "rowSheet",
+        "type": "sheet",
         "url": "https://docs.google.com/spreadsheets/d/abc123",
         "taskDesc": "Database schema design",
         "taskStatus": "Completed",
@@ -203,7 +203,7 @@ All API responses follow this standard format:
 
 ```json
 {
-  "type": "jiraTicket" | "rowSheet",
+  "type": "jira" | "sheet",
   "listUrl": [
     "https://company.atlassian.net/browse/PROJ-123",
     "https://company.atlassian.net/browse/PROJ-124"
@@ -408,6 +408,6 @@ const response = await fetch("/api/project", {
 const response = await fetch(`/api/task?teamId=1&projectId=1`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ type: "jiraTicket", listUrl: ["..."] }),
+  body: JSON.stringify({ type: "jira", listUrl: ["..."] }),
 });
 ```

@@ -1,10 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { parseTaskUrl } from '@/lib/external-api';
 
 interface AddTaskRequest {
-  type: 'jiraTicket' | 'rowSheet';
+  type: 'jira' | 'sheet';
   url: string;
+}
+
+function parseTaskUrl(url: string): { type: 'jira' | 'sheet'; url: string } {
+  // Simple URL validation and type detection
+  try {
+    const parsed = new URL(url);
+
+    // Example: Detect Jira ticket by domain or path
+    if (/atlassian\.net/.test(parsed.hostname) || /jira/.test(parsed.pathname)) {
+      return { type: 'jira', url };
+    }
+
+    // Example: Detect Google Sheet row by domain and path
+    if (
+      parsed.hostname === 'docs.google.com' &&
+      parsed.pathname.startsWith('/spreadsheets/')
+    ) {
+      return { type: 'sheet', url };
+    }
+
+    throw new Error('Unknown task type');
+  } catch {
+    throw new Error('Invalid URL');
+  }
 }
 
 export async function POST(request: NextRequest) {

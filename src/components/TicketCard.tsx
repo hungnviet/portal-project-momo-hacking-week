@@ -68,11 +68,11 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         <div className="flex items-center gap-2">
           {ticket.type === 'jira' ? (
             <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-              JIRA
+              TICKET
             </span>
           ) : (
             <span className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium">
-              SHEET
+              ROW
             </span>
           )}
         </div>

@@ -144,8 +144,6 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
 
     const rawData = await response.json();
 
-    console.log(`Fetched data for ${issueKey}:`, rawData);
-
     // Transform to general info format
     const generalInfo: JiraTicketGeneralInfo = {
       id: rawData.id,

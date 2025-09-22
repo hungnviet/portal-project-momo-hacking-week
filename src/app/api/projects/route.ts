@@ -7,7 +7,6 @@ export async function GET(request: NextRequest) {
     const poDomain = searchParams.get('PODomain');
 
     // Get all projects with their teams
-    console.log('🔍 Attempting to fetch from Project table...');
     const { data: projects, error: projectsError } = await supabase
       .from('Project')
       .select(`
@@ -18,30 +17,21 @@ export async function GET(request: NextRequest) {
         end_date
       `);
 
-    console.log('📊 Raw Supabase response:');
-    console.log('- Data:', projects);
-    console.log('- Error:', projectsError);
-    console.log('- Data type:', typeof projects);
-    console.log('- Is array:', Array.isArray(projects));
-    console.log('- Length:', projects?.length);
-
     if (projectsError) {
-        console.error('Error fetching projects:', projectsError);
+      console.error('Error fetching projects:', projectsError);
       return NextResponse.json({
         status: 'error',
         message: 'Failed to fetch projects',
         errorCode: 'DB_ERROR',
         data: null
       }, { status: 500 });
-    } else {
-        console.log('Projects fetched successfully:', projects);
     }
 
     // For each project, get the teams and calculate status/progress
     const projectsWithTeams = await Promise.all(
       projects.map(async (project) => {
         // Get teams for this project
-        console.log('🔍 Fetching teams for project:', project.id);
+
         const { data: teamProjects, error: teamError } = await supabase
           .from('Teams_Projects')
           .select(`
@@ -57,17 +47,14 @@ export async function GET(request: NextRequest) {
 
         if (teamError) {
           console.error('Error fetching teams for project:', project.id, teamError);
-        } else {
-          console.log('Teams for project', project.id, ':', teamProjects);
         }
 
         const teamNameList = teamProjects && Array.isArray(teamProjects)
-        ? teamProjects.map(tp => {
-            console.log('Team project item:', tp);
+          ? teamProjects.map(tp => {
             // tp.Team should be an object, not an array
             return (tp.Team as any)?.name || 'Unknown';
           })
-        : [];
+          : [];
 
         // Get tasks for this project to calculate progress
         const { data: tasks, error: tasksError } = await supabase
@@ -86,7 +73,7 @@ export async function GET(request: NextRequest) {
         const currentDate = new Date();
         const startDate = new Date(project.start_date);
         const endDate = new Date(project.end_date);
-        
+
         let status = 'Planning';
         if (currentDate >= startDate && currentDate <= endDate) {
           status = progress === 100 ? 'Completed' : 'In Progress';

@@ -57,7 +57,7 @@ interface AddCommentResponse {
 }
 
 interface AddTaskRequest {
-    type: 'jiraTicket' | 'rowSheet';
+    type: 'jira' | 'sheet';
     url: string;
 }
 
@@ -74,7 +74,7 @@ interface TeamDetails {
 }
 
 interface TaskData {
-    type: 'rowSheet' | 'jiraTicket' | 'unknown';
+    type: 'sheet' | 'jira' | 'unknown';
     url: string;
     id: string;
     ticketName: string;
