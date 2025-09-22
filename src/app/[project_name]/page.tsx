@@ -2,9 +2,9 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import ProjectProgress from '@/components/ProjectProgress';
-import TeamSection from '@/components/TeamSection';
-import ProjectComments from '@/components/ProjectComments';
+import ProjectProgress from '../../components/ProjectProgress';
+import TeamSection from '../../components/TeamSection';
+import ProjectComments from '../../components/ProjectComments';
 
 // Mock data for project details
 const getProjectDetails = (projectName: string) => {
