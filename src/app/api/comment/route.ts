@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 
 interface AddCommentRequest {
   time: string;
-  userDomain: string;
   content: string;
 }
 
@@ -22,13 +21,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body: AddCommentRequest = await request.json();
-    const { time, userDomain, content } = body;
+    const { time, content } = body;
 
-    if (!userDomain || !content) {
+    if (!content) {
       return NextResponse.json({
         status: 'error',
         errorCode: 'VALIDATION_ERROR',
-        message: 'userDomain and content are required',
+        message: 'content is required',
         data: null
       }, { status: 400 });
     }
@@ -53,7 +52,6 @@ export async function POST(request: NextRequest) {
     const commentData = {
       projectid: parseInt(projectId),
       comment: content.trim(),
-      user: userDomain,
       created_at: time || new Date().toISOString()
     };
 
@@ -82,7 +80,6 @@ export async function POST(request: NextRequest) {
         commentId: insertedComment.id,
         projectId: insertedComment.projectid,
         content: insertedComment.comment,
-        user: insertedComment.user,
         createdAt: insertedComment.created_at
       }
     });

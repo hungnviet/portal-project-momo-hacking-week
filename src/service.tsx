@@ -37,6 +37,43 @@ interface CreateProjectResponse {
     }>;
 }
 
+interface Comment {
+    id: number;
+    projectid: number;
+    comment: string;
+    created_at: string;
+}
+
+interface AddCommentRequest {
+    time?: string;
+    content: string;
+}
+
+interface AddCommentResponse {
+    commentId: number;
+    projectId: number;
+    content: string;
+    createdAt: string;
+}
+
+interface TeamDetails {
+    teamId: number;
+    teamName: string;
+    teamDesc: string;
+    teamProgress: number;
+    teamPODomain: string;
+}
+
+interface ProjectDetails {
+    projectId: number;
+    projectName: string;
+    projectDesc: string;
+    status: 'Planning' | 'In Progress' | 'Completed' | 'Overdue';
+    progress: number;
+    comments: Comment[];
+    teamList: TeamDetails[];
+}
+
 /**
  * Service class for making API calls to the backend
  */
@@ -113,6 +150,43 @@ class ApiService {
     }
 
     /**
+     * Fetch detailed project information by project ID
+     * @param projectId The ID of the project to retrieve
+     * @returns Promise containing project details or error
+     */
+    async getProject(projectId: string | number): Promise<ApiResponse<ProjectDetails>> {
+        const endpoint = `/project?projectId=${encodeURIComponent(projectId)}`;
+        return this.makeRequest<ProjectDetails>(endpoint);
+    }
+
+    /**
+     * Fetch comments for a specific project
+     * @param projectId The ID of the project to get comments for
+     * @returns Promise containing comments array or error
+     */
+    async getComments(projectId: string | number): Promise<ApiResponse<Comment[]>> {
+        const endpoint = `/comment?projectId=${encodeURIComponent(projectId)}`;
+        return this.makeRequest<Comment[]>(endpoint);
+    }
+
+    /**
+     * Add a new comment to a project
+     * @param projectId The ID of the project to add comment to
+     * @param commentData Comment data including content
+     * @returns Promise containing created comment data or error
+     */
+    async addComment(
+        projectId: string | number,
+        commentData: AddCommentRequest
+    ): Promise<ApiResponse<AddCommentResponse>> {
+        const endpoint = `/comment?projectId=${encodeURIComponent(projectId)}`;
+        return this.makeRequest<AddCommentResponse>(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(commentData)
+        });
+    }
+
+    /**
      * Utility method to check if API response was successful
      */
     isSuccess<T>(response: ApiResponse<T>): response is ApiResponse<T> & { status: 'success'; data: T } {
@@ -137,4 +211,14 @@ export const apiService = new ApiService();
 export { ApiService };
 
 // Export types for use in components
-export type { ApiResponse, Project, CreateProjectRequest, CreateProjectResponse };
+export type {
+    ApiResponse,
+    Project,
+    CreateProjectRequest,
+    CreateProjectResponse,
+    ProjectDetails,
+    Comment,
+    TeamDetails,
+    AddCommentRequest,
+    AddCommentResponse
+};
