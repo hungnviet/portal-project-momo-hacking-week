@@ -7,9 +7,7 @@ interface Ticket {
   startdate: string;
   duedate: string;
   type: string;
-  jiraUrl?: string;
-  sheetUrl?: string;
-  rowNumber?: number;
+  url: string;
 }
 
 interface TicketCardProps {
@@ -46,11 +44,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
   };
 
   const handleTicketClick = () => {
-    if (ticket.type === 'jira' && ticket.jiraUrl) {
-      window.open(ticket.jiraUrl, '_blank');
-    } else if (ticket.type === 'sheet' && ticket.sheetUrl) {
-      window.open(ticket.sheetUrl, '_blank');
-    }
+    window.open(ticket.url, '_blank');
   };
 
   return (
@@ -95,12 +89,6 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           <span className="font-medium">Due:</span> {ticket.duedate}
         </div>
       </div>
-
-      {ticket.type === 'sheet' && ticket.rowNumber && (
-        <div className="mt-2 text-xs text-gray-500">
-          Sheet Row: {ticket.rowNumber}
-        </div>
-      )}
 
       <div className="mt-3 text-xs text-blue-600 hover:text-blue-800">
         Click to open in {ticket.type === 'jira' ? 'Jira' : 'Google Sheets'} →

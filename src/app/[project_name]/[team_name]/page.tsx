@@ -12,6 +12,7 @@ import { url } from 'inspector';
 interface TeamData {
   id: string;
   name: string;
+  description: string;
   projectName: string;
   progress: number;
   totalTickets: number;
@@ -57,6 +58,7 @@ const transformTaskToTicket = (task: TaskData, index: number) => {
 const transformApiResponseToTeamData = (
   apiData: TeamApiResponse,
   teamName: string,
+  teamDescription: string,
   projectName: string
 ): TeamData => {
   const tickets = apiData.taskList.map((task, index) =>
@@ -81,8 +83,9 @@ const transformApiResponseToTeamData = (
 
   return {
     id: apiData.teamId.toString(),
-    name: decodeURIComponent(teamName),
-    projectName: decodeURIComponent(projectName),
+    name: teamName,
+    description: teamDescription,
+    projectName: projectName,
     progress: apiData.progress,
     totalTickets: tickets.length,
     completedTickets,
@@ -165,7 +168,7 @@ export default function TeamDetailPage() {
       const response: ApiResponse<TeamApiResponse> = await apiService.getTeamDetails(teamId, projectId);
 
       if (apiService.isSuccess(response)) {
-        const transformedData = transformApiResponseToTeamData(response.data, teamName, projectName);
+        const transformedData = transformApiResponseToTeamData(response.data, decodedTeamName, matchingTeam.teamDesc, decodedProjectName);
         setTeamData(transformedData);
       } else {
         setError(apiService.getErrorMessage(response));
@@ -402,7 +405,7 @@ export default function TeamDetailPage() {
                         d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                       />
                     </svg>
-                    Add Sheet
+                    Add Row
                   </button>
                 </>
               )}

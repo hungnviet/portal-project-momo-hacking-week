@@ -145,6 +145,7 @@ export async function GET(request: NextRequest) {
       message: 'Team details retrieved successfully',
       data: {
         teamId: parseInt(teamId),
+        teamName: team.name,
         teamDesc: teamProject?.description || '',
         assignee: team.assignee,
         progress,

@@ -1,6 +1,7 @@
 interface Team {
   id: string;
   name: string;
+  description: string;
   projectName: string;
   progress: number;
   totalTickets: number;
@@ -91,7 +92,7 @@ export default function TeamHeader({ team }: TeamHeaderProps) {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{team.name} Team</h1>
-          <p className="text-gray-600">Contributing to: {team.projectName}</p>
+          <p className="text-gray-600">{team.description}</p>
         </div>
         <div className="text-right flex gap-6">
           <div>

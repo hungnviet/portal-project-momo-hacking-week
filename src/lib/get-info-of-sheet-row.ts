@@ -77,7 +77,7 @@ export async function getSheetRowData(rowUrl: string): Promise<DynamicTaskRowDat
       // Process first 7 columns as individual fields
       const maxMainFields = 8;
       for (let i = 0; i < Math.min(maxMainFields, headerFields.length); i++) {
-        const fieldName = headerFields[i].trim().toLowerCase();
+        const fieldName = headerFields[i].trim();
         dynamicTaskData[fieldName] = rowValues[i] || '';
       }
 
@@ -93,7 +93,7 @@ export async function getSheetRowData(rowUrl: string): Promise<DynamicTaskRowDat
         dynamicTaskData.extra = extraFields;
       }
 
-      console.log('Dynamic task data created:', dynamicTaskData);
+      dynamicTaskData.url = rowUrl; // Include the original row URL
       return dynamicTaskData;
     }
 
