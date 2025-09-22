@@ -2,124 +2,184 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
+import { apiService, type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails } from '../../../service';
 
-// Mock data for team details
-const getTeamDetails = (projectName: string, teamName: string) => {
-  // In real app, this would fetch from API
-  // Determine track method based on team name (or could be based on other logic)
-  const trackMethod = teamName.toLowerCase().includes('sheet') ? 'sheet' : 'jira';
+// Interface for the component's team data structure
+interface TeamData {
+  id: string;
+  name: string;
+  projectName: string;
+  progress: number;
+  totalTickets: number;
+  completedTickets: number;
+  status: string;
+  trackMethod: 'jira' | 'sheet';
+  assignee?: string;
+  tickets: Array<{
+    id: string;
+    title: string;
+    status: string;
+    assignee: string;
+    priority: string;
+    dueDate: string;
+    jiraUrl?: string;
+    sheetUrl?: string;
+    type: 'jira' | 'sheet';
+    rowNumber?: number;
+  }>;
+}
 
-  // Check if this is an empty team (for demonstration)
-  const isEmpty = teamName.toLowerCase().includes('empty') || teamName.toLowerCase().includes('new');
+/**
+ * Transform API task data to component ticket structure
+ */
+const transformTaskToTicket = (task: TaskData, index: number) => {
+  const isJira = task.type === 'jiraTicket';
 
-  if (trackMethod === 'jira') {
-    return {
-      id: teamName,
-      name: decodeURIComponent(teamName),
-      projectName: decodeURIComponent(projectName),
-      progress: isEmpty ? 0 : 70,
-      totalTickets: isEmpty ? 0 : 12,
-      completedTickets: isEmpty ? 0 : 8,
-      status: isEmpty ? 'Not Started' : 'On Track',
-      trackMethod: 'jira',
-      tickets: isEmpty ? [] : [
-        {
-          id: 'TECH-001',
-          title: 'Setup API endpoints for user authentication',
-          status: 'Completed',
-          assignee: 'Sarah Wilson',
-          priority: 'High',
-          dueDate: '2024-02-15',
-          jiraUrl: 'https://company.atlassian.net/browse/TECH-001',
-          type: 'jira'
-        },
-        {
-          id: 'TECH-002',
-          title: 'Implement mobile responsive design',
-          status: 'In Progress',
-          assignee: 'Mike Chen',
-          priority: 'Medium',
-          dueDate: '2024-02-20',
-          jiraUrl: 'https://company.atlassian.net/browse/TECH-002',
-          type: 'jira'
-        },
-        {
-          id: 'TECH-003',
-          title: 'Database optimization',
-          status: 'To Do',
-          assignee: 'Alex Johnson',
-          priority: 'High',
-          dueDate: '2024-02-25',
-          jiraUrl: 'https://company.atlassian.net/browse/TECH-003',
-          type: 'jira'
-        }
-      ]
-    };
-  } else {
-    return {
-      id: teamName,
-      name: decodeURIComponent(teamName),
-      projectName: decodeURIComponent(projectName),
-      progress: isEmpty ? 0 : 65,
-      totalTickets: isEmpty ? 0 : 10,
-      completedTickets: isEmpty ? 0 : 6,
-      status: isEmpty ? 'Not Started' : 'On Track',
-      trackMethod: 'sheet',
-      tickets: isEmpty ? [] :
-        [
-          {
-            id: 'SHEET-001',
-            title: 'Database migration planning',
-            status: 'Completed',
-            assignee: 'Alex Johnson',
-            priority: 'High',
-            dueDate: '2024-02-15',
-            sheetUrl: 'https://docs.google.com/spreadsheets/d/abc123',
-            type: 'sheet',
-            rowNumber: 15
-          },
-          {
-            id: 'SHEET-002',
-            title: 'User research analysis',
-            status: 'In Progress',
-            assignee: 'Sarah Wilson',
-            priority: 'Medium',
-            dueDate: '2024-02-20',
-            sheetUrl: 'https://docs.google.com/spreadsheets/d/abc123',
-            type: 'sheet',
-            rowNumber: 16
-          },
-          {
-            id: 'SHEET-003',
-            title: 'Feature requirement documentation',
-            status: 'To Do',
-            assignee: 'Mike Chen',
-            priority: 'Low',
-            dueDate: '2024-02-25',
-            sheetUrl: 'https://docs.google.com/spreadsheets/d/abc123',
-            type: 'sheet',
-            rowNumber: 17
-          }
-        ]
-    };
+  return {
+    id: `${task.type.toUpperCase()}-${index + 1}`,
+    title: task.taskDesc,
+    status: task.taskStatus,
+    assignee: task.taskAssignee,
+    priority: 'Medium', // API doesn't provide priority, so we set a default
+    dueDate: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Mock due date
+    jiraUrl: isJira ? task.url : undefined,
+    sheetUrl: !isJira ? task.url : undefined,
+    type: isJira ? 'jira' as const : 'sheet' as const,
+    rowNumber: !isJira ? index + 1 : undefined
+  };
+};
+
+/**
+ * Transform API response to component data structure
+ */
+const transformApiResponseToTeamData = (
+  apiData: TeamApiResponse,
+  teamName: string,
+  projectName: string
+): TeamData => {
+  const tickets = apiData.taskList.map(transformTaskToTicket);
+  const completedTickets = tickets.filter(t =>
+    t.status.toLowerCase().includes('done') ||
+    t.status.toLowerCase().includes('complete') ||
+    t.status.toLowerCase().includes('closed')
+  ).length;
+
+  // Determine track method based on the majority of task types
+  const jiraTasks = apiData.taskList.filter(t => t.type === 'jiraTicket').length;
+  const sheetTasks = apiData.taskList.filter(t => t.type === 'rowSheet').length;
+  const trackMethod = jiraTasks >= sheetTasks ? 'jira' : 'sheet';
+
+  // Determine status based on progress
+  let status = 'Not Started';
+  if (apiData.progress > 0 && apiData.progress < 100) {
+    status = 'In Progress';
+  } else if (apiData.progress === 100) {
+    status = 'Completed';
   }
+
+  return {
+    id: apiData.teamId.toString(),
+    name: decodeURIComponent(teamName),
+    projectName: decodeURIComponent(projectName),
+    progress: apiData.progress,
+    totalTickets: tickets.length,
+    completedTickets,
+    status,
+    trackMethod,
+    assignee: apiData.assignee,
+    tickets
+  };
 };
 
 export default function TeamDetailPage() {
   const params = useParams();
   const projectName = params.project_name as string;
   const teamName = params.team_name as string;
-  const teamData = getTeamDetails(projectName, teamName);
 
-  // State for popup modal
+  // State management
+  const [teamData, setTeamData] = useState<TeamData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [linkInput, setLinkInput] = useState('');
 
+  // Fetch team details on component mount
+  useEffect(() => {
+    const fetchTeamDetails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // First, get all projects to find the matching project and team IDs
+        const decodedProjectName = decodeURIComponent(projectName);
+        const decodedTeamName = decodeURIComponent(teamName);
+
+        // Fetch all projects to find the one with matching name
+        const projectsResponse = await apiService.getProjects();
+
+        if (!apiService.isSuccess(projectsResponse)) {
+          setError(apiService.getErrorMessage(projectsResponse));
+          return;
+        }
+
+        // Find the project with matching name
+        const matchingProject = projectsResponse.data.find(
+          (p: any) => p.projectName === decodedProjectName
+        );
+
+        if (!matchingProject) {
+          setError(`Project "${decodedProjectName}" not found`);
+          return;
+        }
+
+        // Now fetch detailed project data to get team information
+        const projectDetailResponse = await apiService.getProject(matchingProject.projectId);
+
+        if (!apiService.isSuccess(projectDetailResponse)) {
+          setError(apiService.getErrorMessage(projectDetailResponse));
+          return;
+        }
+
+        // Find the team with matching name within the project
+        const matchingTeam = projectDetailResponse.data.teamList.find(
+          (team: any) => team.teamName === decodedTeamName
+        );
+
+        if (!matchingTeam) {
+          setError(`Team "${decodedTeamName}" not found in project "${decodedProjectName}"`);
+          return;
+        }
+
+        // Now we have the actual IDs, make the team details API call
+        const teamId = matchingTeam.teamId;
+        const projectId = matchingProject.projectId;
+
+        const response: ApiResponse<TeamApiResponse> = await apiService.getTeamDetails(teamId, projectId);
+
+        if (apiService.isSuccess(response)) {
+          const transformedData = transformApiResponseToTeamData(response.data, teamName, projectName);
+          setTeamData(transformedData);
+        } else {
+          setError(apiService.getErrorMessage(response));
+        }
+      } catch (err) {
+        setError('Failed to fetch team details. Please try again later.');
+        console.error('Error fetching team details:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (projectName && teamName) {
+      fetchTeamDetails();
+    }
+  }, [projectName, teamName]);
+
   const handleAddLink = () => {
-    if (linkInput.trim()) {
+    if (linkInput.trim() && teamData) {
       // Here you would typically save the link to your backend
       console.log(`Adding ${teamData.trackMethod} link:`, linkInput);
 
@@ -136,6 +196,84 @@ export default function TeamDetailPage() {
     setLinkInput('');
     setShowAddModal(false);
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <Link
+              href={`/${projectName}`}
+              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+            >
+              ← Back to {decodeURIComponent(projectName)}
+            </Link>
+          </div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading team details...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <Link
+              href={`/${projectName}`}
+              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+            >
+              ← Back to {decodeURIComponent(projectName)}
+            </Link>
+          </div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <div className="text-red-500 mb-2">⚠️</div>
+              <p className="text-red-600 font-medium mb-2">Error loading team details</p>
+              <p className="text-gray-600 text-sm">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (!teamData) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <Link
+              href={`/${projectName}`}
+              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+            >
+              ← Back to {decodeURIComponent(projectName)}
+            </Link>
+          </div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <p className="text-gray-600">No team data found</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">

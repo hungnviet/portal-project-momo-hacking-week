@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const teamId = searchParams.get('teamId');
     const projectId = searchParams.get('projectId');
 
+    console.log(`Fetching details for teamId: ${teamId}, projectId: ${projectId}`);
+
     if (!teamId || !projectId) {
       return NextResponse.json({
         status: 'error',

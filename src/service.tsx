@@ -64,6 +64,22 @@ interface TeamDetails {
     teamPODomain: string;
 }
 
+interface TaskData {
+    type: 'rowSheet' | 'jiraTicket' | 'unknown';
+    url: string;
+    taskDesc: string;
+    taskStatus: string;
+    taskAssignee: string;
+}
+
+interface TeamApiResponse {
+    teamId: number;
+    teamDesc: string;
+    assignee: string;
+    progress: number;
+    taskList: TaskData[];
+}
+
 interface ProjectDetails {
     projectId: number;
     projectName: string;
@@ -187,6 +203,20 @@ class ApiService {
     }
 
     /**
+     * Fetch team details with tasks and progress for a specific team and project
+     * @param teamId The ID of the team to retrieve
+     * @param projectId The ID of the project to retrieve team details for
+     * @returns Promise containing team details with tasks or error
+     */
+    async getTeamDetails(
+        teamId: string | number,
+        projectId: string | number
+    ): Promise<ApiResponse<TeamApiResponse>> {
+        const endpoint = `/team?teamId=${encodeURIComponent(teamId)}&projectId=${encodeURIComponent(projectId)}`;
+        return this.makeRequest<TeamApiResponse>(endpoint);
+    }
+
+    /**
      * Utility method to check if API response was successful
      */
     isSuccess<T>(response: ApiResponse<T>): response is ApiResponse<T> & { status: 'success'; data: T } {
@@ -219,6 +249,8 @@ export type {
     ProjectDetails,
     Comment,
     TeamDetails,
+    TaskData,
+    TeamApiResponse,
     AddCommentRequest,
     AddCommentResponse
 };
