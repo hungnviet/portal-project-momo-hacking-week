@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { fetchJiraTicket, fetchSheetRow, calculateProgress } from '@/lib/external-api';
+import { getListGeneralInfoOfJiraTicket } from '@/lib/get-general-info-of-list-jira-ticket';
+
+function calculateProgress(taskList: any[]) {
+  if (!taskList || taskList.length === 0) return 0;
+  
+  const completedStatuses = ['Done', 'Closed', 'Resolved', 'Complete'];
+  const completedTasks = taskList.filter(task => 
+    completedStatuses.includes(task.ticketStatus)
+  ).length;
+  
+  return Math.round((completedTasks / taskList.length) * 100);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,48 +75,72 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Fetch external data for each task
-    const taskList = await Promise.all(
-      (tasks || []).map(async (task: any) => {
-        let taskData = {
-          type: 'unknown' as 'rowSheet' | 'jiraTicket',
+    // Extract Jira URLs from tasks
+    const jiraUrls = (tasks || [])
+      .filter(task => task.url && (task.url.includes('atlassian.net') || task.url.includes('jira')))
+      .map(task => task.url);
+
+    console.log(`🔍 Found ${jiraUrls.length} Jira tickets to fetch`);
+
+    // Fetch comprehensive Jira ticket information
+    let taskList: any[] = [];
+    
+    if (jiraUrls.length > 0) {
+      try {
+        const jiraTicketsInfo = await getListGeneralInfoOfJiraTicket(jiraUrls);
+        
+        // Map the fetched data to the task list format
+        taskList = jiraTicketsInfo.map(ticket => ({
+          id: ticket.id,
+          ticketName: ticket.ticketName,
+          ticketDescription: ticket.ticketDescription,
+          ticketStatus: ticket.ticketStatus,
+          ticketPriority: ticket.ticketPriority,
+          assignee: ticket.assignee,
+          startdate: ticket.startdate,
+          ticketKey: ticket.ticketKey,
+          projectName: ticket.projectName,
+          ticketType: ticket.ticketType,
+          url: ticket.url,
+          type: 'jiraTicket' as const
+        }));
+        
+        console.log(`✅ Successfully fetched ${taskList.length} Jira tickets`);
+      } catch (error) {
+        console.error('Error fetching Jira tickets:', error);
+        // Fallback to basic task info if Jira fetch fails
+        taskList = (tasks || []).map(task => ({
+          type: 'jiraTicket' as const,
           url: task.url,
-          taskDesc: 'Unable to fetch details',
-          taskStatus: 'Unknown',
-          taskAssignee: 'Unknown'
-        };
+          ticketName: 'Unable to fetch details',
+          ticketStatus: 'Unknown',
+          assignee: 'Unknown',
+          error: 'Failed to fetch Jira data'
+        }));
+      }
+    }
 
-        try {
-          if (task.url.includes('atlassian.net') || task.url.includes('jira')) {
-            // Fetch Jira ticket
-            taskData.type = 'jiraTicket';
-            const jiraData = await fetchJiraTicket(task.url);
-            if (jiraData) {
-              taskData.taskDesc = jiraData.summary;
-              taskData.taskStatus = jiraData.status.name;
-              taskData.taskAssignee = jiraData.assignee?.displayName || 'Unassigned';
-            }
-          } else if (task.url.includes('docs.google.com/spreadsheets')) {
-            // Fetch Google Sheets data
-            taskData.type = 'rowSheet';
-            const sheetData = await fetchSheetRow(task.url);
-            if (sheetData) {
-              taskData.taskDesc = sheetData.taskDesc;
-              taskData.taskStatus = sheetData.status;
-              taskData.taskAssignee = sheetData.assignee;
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching data for task ${task.taskId}:`, error);
-          // Keep default values if fetch fails
-        }
-
-        return taskData;
-      })
-    );
+    // Handle non-Jira tasks (Google Sheets, etc.) - keep original logic for these
+    const nonJiraTasks = (tasks || [])
+      .filter(task => task.url && !task.url.includes('atlassian.net') && !task.url.includes('jira'));
+    
+    if (nonJiraTasks.length > 0) {
+      console.log(`📋 Found ${nonJiraTasks.length} non-Jira tasks (e.g., Google Sheets)`);
+      
+      const nonJiraTaskData = nonJiraTasks.map(task => ({
+        type: task.url.includes('docs.google.com/spreadsheets') ? 'rowSheet' as const : 'unknown' as const,
+        url: task.url,
+        ticketName: 'External task',
+        ticketStatus: 'Unknown',
+        assignee: 'Unknown',
+        note: 'Non-Jira task - detailed fetching not implemented'
+      }));
+      
+      taskList = [...taskList, ...nonJiraTaskData];
+    }
 
     // Calculate progress based on task statuses
-    const progress = calculateProgress(taskList.map(task => ({ status: task.taskStatus })));
+    const progress = calculateProgress(taskList);
 
     return NextResponse.json({
       status: 'success',
