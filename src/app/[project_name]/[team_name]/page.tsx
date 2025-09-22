@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
-import { apiService, type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails } from '../../../service';
+import { apiService, type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse } from '../../../service';
 
 // Interface for the component's team data structure
 interface TeamData {
@@ -105,90 +105,148 @@ export default function TeamDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [linkInput, setLinkInput] = useState('');
+  const [addingTask, setAddingTask] = useState(false);
+  const [teamId, setTeamId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   // Fetch team details on component mount
-  useEffect(() => {
-    const fetchTeamDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchTeamDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // First, get all projects to find the matching project and team IDs
-        const decodedProjectName = decodeURIComponent(projectName);
-        const decodedTeamName = decodeURIComponent(teamName);
+      // First, get all projects to find the matching project and team IDs
+      const decodedProjectName = decodeURIComponent(projectName);
+      const decodedTeamName = decodeURIComponent(teamName);
 
-        // Fetch all projects to find the one with matching name
-        const projectsResponse = await apiService.getProjects();
+      // Fetch all projects to find the one with matching name
+      const projectsResponse = await apiService.getProjects();
 
-        if (!apiService.isSuccess(projectsResponse)) {
-          setError(apiService.getErrorMessage(projectsResponse));
-          return;
-        }
-
-        // Find the project with matching name
-        const matchingProject = projectsResponse.data.find(
-          (p: any) => p.projectName === decodedProjectName
-        );
-
-        if (!matchingProject) {
-          setError(`Project "${decodedProjectName}" not found`);
-          return;
-        }
-
-        // Now fetch detailed project data to get team information
-        const projectDetailResponse = await apiService.getProject(matchingProject.projectId);
-
-        if (!apiService.isSuccess(projectDetailResponse)) {
-          setError(apiService.getErrorMessage(projectDetailResponse));
-          return;
-        }
-
-        // Find the team with matching name within the project
-        const matchingTeam = projectDetailResponse.data.teamList.find(
-          (team: any) => team.teamName === decodedTeamName
-        );
-
-        if (!matchingTeam) {
-          setError(`Team "${decodedTeamName}" not found in project "${decodedProjectName}"`);
-          return;
-        }
-
-        // Now we have the actual IDs, make the team details API call
-        const teamId = matchingTeam.teamId;
-        const projectId = matchingProject.projectId;
-
-        const response: ApiResponse<TeamApiResponse> = await apiService.getTeamDetails(teamId, projectId);
-
-        if (apiService.isSuccess(response)) {
-          const transformedData = transformApiResponseToTeamData(response.data, teamName, projectName);
-          setTeamData(transformedData);
-        } else {
-          setError(apiService.getErrorMessage(response));
-        }
-      } catch (err) {
-        setError('Failed to fetch team details. Please try again later.');
-        console.error('Error fetching team details:', err);
-      } finally {
-        setLoading(false);
+      if (!apiService.isSuccess(projectsResponse)) {
+        setError(apiService.getErrorMessage(projectsResponse));
+        return;
       }
-    };
 
+      // Find the project with matching name
+      const matchingProject = projectsResponse.data.find(
+        (p: any) => p.projectName === decodedProjectName
+      );
+
+      if (!matchingProject) {
+        setError(`Project "${decodedProjectName}" not found`);
+        return;
+      }
+
+      // Now fetch detailed project data to get team information
+      const projectDetailResponse = await apiService.getProject(matchingProject.projectId);
+
+      if (!apiService.isSuccess(projectDetailResponse)) {
+        setError(apiService.getErrorMessage(projectDetailResponse));
+        return;
+      }
+
+      // Find the team with matching name within the project
+      const matchingTeam = projectDetailResponse.data.teamList.find(
+        (team: any) => team.teamName === decodedTeamName
+      );
+
+      if (!matchingTeam) {
+        setError(`Team "${decodedTeamName}" not found in project "${decodedProjectName}"`);
+        return;
+      }
+
+      // Now we have the actual IDs, make the team details API call
+      const teamId = matchingTeam.teamId;
+      const projectId = matchingProject.projectId;
+
+      // Store the IDs for later use in addTask
+      setTeamId(teamId);
+      setProjectId(projectId);
+
+      const response: ApiResponse<TeamApiResponse> = await apiService.getTeamDetails(teamId, projectId);
+
+      if (apiService.isSuccess(response)) {
+        const transformedData = transformApiResponseToTeamData(response.data, teamName, projectName);
+        setTeamData(transformedData);
+      } else {
+        setError(apiService.getErrorMessage(response));
+      }
+    } catch (err) {
+      setError('Failed to fetch team details. Please try again later.');
+      console.error('Error fetching team details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (projectName && teamName) {
       fetchTeamDetails();
     }
   }, [projectName, teamName]);
 
-  const handleAddLink = () => {
-    if (linkInput.trim() && teamData) {
-      // Here you would typically save the link to your backend
-      console.log(`Adding ${teamData.trackMethod} link:`, linkInput);
+  const handleAddLink = async () => {
+    if (linkInput.trim() && teamData && teamId && projectId) {
+      try {
+        // Basic URL validation
+        let url: URL;
+        try {
+          url = new URL(linkInput.trim());
+        } catch (urlError) {
+          alert('Please enter a valid URL');
+          return;
+        }
 
-      // For now, just open the link in a new tab
-      window.open(linkInput, '_blank');
+        // Additional validation based on task type
+        if (teamData.trackMethod === 'jira') {
+          // Basic validation for Jira URLs (should contain atlassian.net)
+          if (!url.hostname.includes('atlassian.net')) {
+            const proceed = confirm(
+              'This doesn\'t appear to be a Jira URL (should contain atlassian.net). Do you want to add it anyway?'
+            );
+            if (!proceed) return;
+          }
+        } else {
+          // Basic validation for Google Sheets URLs
+          if (!url.hostname.includes('docs.google.com') || !url.pathname.includes('spreadsheets')) {
+            const proceed = confirm(
+              'This doesn\'t appear to be a Google Sheets URL. Do you want to add it anyway?'
+            );
+            if (!proceed) return;
+          }
+        }
 
-      // Reset and close modal
-      setLinkInput('');
-      setShowAddModal(false);
+        setAddingTask(true);
+
+        // Determine task type based on the team's track method
+        const taskType = teamData.trackMethod === 'jira' ? 'jiraTicket' : 'rowSheet';
+
+        // Call the addTask API
+        const response = await apiService.addTask(teamId, projectId, {
+          type: taskType,
+          url: linkInput.trim()
+        });
+
+        if (apiService.isSuccess(response)) {
+          console.log('Task added successfully:', response.data);
+
+          // Refresh the team data to show the new task
+          await fetchTeamDetails();
+        } else {
+          // Handle error case
+          const errorMessage = apiService.getErrorMessage(response);
+          console.error('Failed to add task:', errorMessage);
+          alert(`Failed to add task: ${errorMessage}`);
+        }
+      } catch (error) {
+        console.error('Error adding task:', error);
+        alert('An error occurred while adding the task. Please try again.');
+      } finally {
+        setAddingTask(false);
+        // Reset and close modal
+        setLinkInput('');
+        setShowAddModal(false);
+      }
     }
   };
 
@@ -467,10 +525,17 @@ export default function TeamDetailPage() {
                 </button>
                 <button
                   onClick={handleAddLink}
-                  disabled={!linkInput.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!linkInput.trim() || addingTask}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
-                  Add Link
+                  {addingTask ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Link'
+                  )}
                 </button>
               </div>
             </div>

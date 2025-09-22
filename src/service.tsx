@@ -56,6 +56,15 @@ interface AddCommentResponse {
     createdAt: string;
 }
 
+interface AddTaskRequest {
+    type: 'jiraTicket' | 'rowSheet';
+    url: string;
+}
+
+interface AddTaskResponse {
+    taskId: number;
+}
+
 interface TeamDetails {
     teamId: number;
     teamName: string;
@@ -217,6 +226,25 @@ class ApiService {
     }
 
     /**
+     * Add a single task to a specific team and project
+     * @param teamId The ID of the team to add task to
+     * @param projectId The ID of the project to add task to
+     * @param taskData Task data including type and URL
+     * @returns Promise containing added task data or error
+     */
+    async addTask(
+        teamId: string | number,
+        projectId: string | number,
+        taskData: AddTaskRequest
+    ): Promise<ApiResponse<AddTaskResponse>> {
+        const endpoint = `/task?teamId=${encodeURIComponent(teamId)}&projectId=${encodeURIComponent(projectId)}`;
+        return this.makeRequest<AddTaskResponse>(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(taskData)
+        });
+    }
+
+    /**
      * Utility method to check if API response was successful
      */
     isSuccess<T>(response: ApiResponse<T>): response is ApiResponse<T> & { status: 'success'; data: T } {
@@ -252,5 +280,7 @@ export type {
     TaskData,
     TeamApiResponse,
     AddCommentRequest,
-    AddCommentResponse
+    AddCommentResponse,
+    AddTaskRequest,
+    AddTaskResponse
 };

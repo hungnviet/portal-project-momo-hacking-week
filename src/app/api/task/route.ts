@@ -4,7 +4,7 @@ import { parseTaskUrl } from '@/lib/external-api';
 
 interface AddTaskRequest {
   type: 'jiraTicket' | 'rowSheet';
-  listUrl: string[];
+  url: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -23,13 +23,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body: AddTaskRequest = await request.json();
-    const { type, listUrl } = body;
+    const { type, url } = body;
 
-    if (!type || !listUrl || !Array.isArray(listUrl) || listUrl.length === 0) {
+    if (!type || !url) {
       return NextResponse.json({
         status: 'error',
         errorCode: 'VALIDATION_ERROR',
-        message: 'type and listUrl are required, listUrl must be a non-empty array',
+        message: 'type and url are required',
         data: null
       }, { status: 400 });
     }
@@ -82,98 +82,87 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Validate URLs and prepare tasks for insertion
-    const tasksToInsert = [];
-    const validationErrors = [];
+    // Validate URL and prepare task for insertion
+    try {
+      // Validate URL format
+      const parsedUrl = parseTaskUrl(url);
 
-    for (let i = 0; i < listUrl.length; i++) {
-      const url = listUrl[i];
-      
-      try {
-        // Validate URL format
-        const parsedUrl = parseTaskUrl(url);
-        
-        // Check if the type matches the expected type
-        if (parsedUrl.type !== type) {
-          validationErrors.push(`URL ${i + 1}: Type mismatch. Expected ${type}, got ${parsedUrl.type}`);
-          continue;
-        }
+      // Check if the type matches the expected type
+      if (parsedUrl.type !== type) {
+        return NextResponse.json({
+          status: 'error',
+          errorCode: 'VALIDATION_ERROR',
+          message: `Type mismatch. Expected ${type}, got ${parsedUrl.type}`,
+          data: null
+        }, { status: 400 });
+      }
 
-        // Check if task with this URL already exists for this team and project
-        const { data: existingTask, error: checkError } = await supabase
-          .from('Task')
-          .select('taskId')
-          .eq('teamId', teamId)
-          .eq('projectId', projectId)
-          .eq('url', url)
-          .single();
+      // Check if task with this URL already exists for this team and project
+      const { data: existingTask, error: checkError } = await supabase
+        .from('Task')
+        .select('taskId')
+        .eq('teamId', teamId)
+        .eq('projectId', projectId)
+        .eq('url', url)
+        .single();
 
-        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error('Error checking existing task:', checkError);
-        }
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error checking existing task:', checkError);
+        return NextResponse.json({
+          status: 'error',
+          errorCode: 'DB_ERROR',
+          message: 'Failed to check existing tasks',
+          data: null
+        }, { status: 500 });
+      }
 
-        if (existingTask) {
-          validationErrors.push(`URL ${i + 1}: Task with this URL already exists`);
-          continue;
-        }
+      if (existingTask) {
+        return NextResponse.json({
+          status: 'error',
+          errorCode: 'DUPLICATE_TASK',
+          message: 'Task with this URL already exists',
+          data: null
+        }, { status: 409 });
+      }
 
-        tasksToInsert.push({
+      // Insert task
+      const { data: insertedTask, error: insertError } = await supabase
+        .from('Task')
+        .insert({
           teamId: parseInt(teamId),
           projectId: parseInt(projectId),
           url: url
-        });
+        })
+        .select()
+        .single();
 
-      } catch (error) {
-        validationErrors.push(`URL ${i + 1}: Invalid URL format - ${url}`);
+      if (insertError) {
+        console.error('Error inserting task:', insertError);
+        return NextResponse.json({
+          status: 'error',
+          errorCode: 'DB_ERROR',
+          message: 'Failed to insert task',
+          data: null
+        }, { status: 500 });
       }
-    }
 
-    if (validationErrors.length > 0) {
+      return NextResponse.json({
+        status: 'success',
+        errorCode: null,
+        message: 'Successfully added task',
+        data: {
+          taskId: insertedTask.taskId
+        }
+      });
+
+    } catch (error) {
       return NextResponse.json({
         status: 'error',
         errorCode: 'VALIDATION_ERROR',
-        message: 'Some URLs are invalid',
-        data: {
-          errors: validationErrors,
-          validTasks: tasksToInsert.length
-        }
-      }, { status: 400 });
-    }
-
-    if (tasksToInsert.length === 0) {
-      return NextResponse.json({
-        status: 'error',
-        errorCode: 'NO_VALID_TASKS',
-        message: 'No valid tasks to insert',
+        message: `Invalid URL format - ${url}`,
         data: null
       }, { status: 400 });
     }
-
-    // Insert tasks
-    const { data: insertedTasks, error: insertError } = await supabase
-      .from('Task')
-      .insert(tasksToInsert)
-      .select();
-
-    if (insertError) {
-      console.error('Error inserting tasks:', insertError);
-      return NextResponse.json({
-        status: 'error',
-        errorCode: 'DB_ERROR',
-        message: 'Failed to insert tasks',
-        data: null
-      }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      status: 'success',
-      errorCode: null,
-      message: `Successfully added ${insertedTasks.length} task(s)`,
-      data: {
-        insertedCount: insertedTasks.length,
-        taskIds: insertedTasks.map((task: any) => task.taskId)
-      }
-    });
 
   } catch (error) {
     console.error('Error in POST /api/task:', error);
