@@ -73,9 +73,7 @@ const transformApiResponseToTeamData = (
   ).length;
 
   // Determine track method based on the majority of task types
-  const jiraTasks = apiData.taskList.filter(t => t.type === 'jiraTicket').length;
-  const sheetTasks = apiData.taskList.filter(t => t.type === 'rowSheet').length;
-  const trackMethod = jiraTasks >= sheetTasks ? 'jira' : 'sheet';
+  const trackMethod = apiData.type === 1 ? 'jira' : 'sheet';
 
   // Determine status based on progress
   let status = 'Not Started';
@@ -387,9 +385,30 @@ export default function TeamDetailPage() {
                   </button>
                 </>
               ) : (
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                  Sheet Rows
-                </span>
+                <>
+                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                    Sheet Rows
+                  </span>
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="inline-flex items-center px-3 py-1 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    <svg
+                      className="-ml-1 mr-1 h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add Sheet
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -428,7 +447,7 @@ export default function TeamDetailPage() {
                 </div>
               )
             ) : (
-              // For Sheet teams: show tickets if any, otherwise show the "Add Google Sheet" button
+              // For Sheet teams: show tickets if any, otherwise show empty state
               teamData.tickets.length > 0 ? (
                 teamData.tickets.map((ticket) => (
                   <TicketCard key={ticket.id} ticket={ticket} />
@@ -455,29 +474,8 @@ export default function TeamDetailPage() {
                     No tasks yet
                   </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    Get started by creating your first Google Sheet.
+                    Get started by adding your first Google Sheet using the button above.
                   </p>
-                  <div className="mt-6">
-                    <button
-                      onClick={() => setShowAddModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      <svg
-                        className="-ml-1 mr-2 h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                      </svg>
-                      Add Google Sheet
-                    </button>
-                  </div>
                 </div>
               )
             )}

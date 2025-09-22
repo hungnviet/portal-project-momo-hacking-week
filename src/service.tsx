@@ -94,6 +94,7 @@ interface TeamApiResponse {
     teamDesc: string;
     assignee: string;
     progress: number;
+    type: number;
     taskList: TaskData[];
 }
 

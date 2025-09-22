@@ -152,6 +152,7 @@ export async function GET(request: NextRequest) {
         teamDesc: teamProject?.description || '',
         assignee: team.assignee,
         progress,
+        type: team.type,
         taskList
       }
     });
