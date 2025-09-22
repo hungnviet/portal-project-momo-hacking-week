@@ -5,7 +5,7 @@ interface Ticket {
   assignee: string;
   priority: string;
   dueDate: string;
-  type: 'jira' | 'sheet';
+  type: string;
   jiraUrl?: string;
   sheetUrl?: string;
   rowNumber?: number;
@@ -53,7 +53,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
   };
 
   return (
-    <div 
+    <div
       className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
       onClick={handleTicketClick}
     >
@@ -76,7 +76,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           )}
         </div>
       </div>
-      
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
         <div>
           <span className="font-medium">ID:</span> {ticket.id}
@@ -85,7 +85,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           <span className="font-medium">Assignee:</span> {ticket.assignee}
         </div>
         <div>
-          <span className="font-medium">Priority:</span> 
+          <span className="font-medium">Priority:</span>
           <span className={`ml-1 font-medium ${getPriorityColor(ticket.priority)}`}>
             {ticket.priority}
           </span>
@@ -94,13 +94,13 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           <span className="font-medium">Due:</span> {ticket.dueDate}
         </div>
       </div>
-      
+
       {ticket.type === 'sheet' && ticket.rowNumber && (
         <div className="mt-2 text-xs text-gray-500">
           Sheet Row: {ticket.rowNumber}
         </div>
       )}
-      
+
       <div className="mt-3 text-xs text-blue-600 hover:text-blue-800">
         Click to open in {ticket.type === 'jira' ? 'Jira' : 'Google Sheets'} →
       </div>

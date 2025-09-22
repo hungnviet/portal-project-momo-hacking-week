@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  db:
+    container_name: supabase_db
+    image: supabase/postgres:15.1.0.123
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      PGDATA: /var/lib/postgresql/data
+
+  kong:
+    container_name: supabase_kong
+    image: kong:2.8
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    volumes:
+      - ./kong.yml:/var/lib/kong/kong.yml
+
+  auth:
+    container_name: supabase_auth
+    image: supabase/gotrue:v2.149.0
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_JWT_SECRET: super-secret-jwt-token
+      GOTRUE_API_HOST: 0.0.0.0
+
+  rest:
+    container_name: supabase_rest
+    image: postgrest/postgrest:v12.0.2
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@db:5432/postgres
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: super-secret-jwt-token
+    ports:
+      - "3001:3000"
+
+  realtime:
+    container_name: supabase_realtime
+    image: supabase/realtime:v2.29.5
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_PORT: 5432
+      PORT: 4000
+      JWT_SECRET: super-secret-jwt-token
+    ports:
+      - "4000:4000"
+
+  studio:
+    container_name: supabase_studio
+    image: supabase/studio:20241106-f29003e
+    restart: unless-stopped
+    depends_on:
+      - db
+      - auth
+      - rest
+    environment:
+      STUDIO_PG_META_URL: http://rest:3000
+    ports:
+      - "8089:3000"
+
+volumes:
+  db-data:

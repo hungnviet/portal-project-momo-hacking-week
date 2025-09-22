@@ -18,6 +18,7 @@ export interface Team {
   ticketCount: number;
   completedTickets: number;
   status: 'On Track' | 'Behind Schedule' | 'Ahead of Schedule';
+  trackMethod?: 'jira' | 'sheet';
 }
 
 export interface Ticket {
