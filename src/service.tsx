@@ -24,6 +24,7 @@ interface CreateProjectRequest {
         teamName: string;
         teamDesc: string;
         PODomain: string;
+        type: number;
     }>;
 }
 

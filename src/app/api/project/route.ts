@@ -10,6 +10,7 @@ interface CreateProjectRequest {
     teamName: string;
     teamDesc: string;
     PODomain: string;
+    type: number; // Optional team type: 0 = Sheet, 1 = Jira (default)
   }>;
 }
 
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
             .insert({
               name: teamData.teamName,
               assignee: teamData.PODomain,
-              type: 1 // Default to Jira, can be updated later
+              type: teamData.type
             })
             .select()
             .single();
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
           .insert({
             team_id: teamId,
             project_id: newProject.id,
-            description: teamData.teamDesc
+            description: teamData.teamDesc,
           });
 
         if (relationError) {

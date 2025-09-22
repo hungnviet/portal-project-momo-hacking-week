@@ -14,28 +14,33 @@ export default function HomePage() {
 
   // Fetch projects on component mount
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response: ApiResponse<Project[]> = await apiService.getProjects();
-
-        if (apiService.isSuccess(response)) {
-          setProjects(response.data);
-        } else {
-          setError(apiService.getErrorMessage(response));
-        }
-      } catch (err) {
-        setError('Failed to fetch projects. Please try again later.');
-        console.error('Error fetching projects:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProjects();
   }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response: ApiResponse<Project[]> = await apiService.getProjects();
+
+      if (apiService.isSuccess(response)) {
+        setProjects(response.data);
+      } else {
+        setError(apiService.getErrorMessage(response));
+      }
+    } catch (err) {
+      setError('Failed to fetch projects. Please try again later.');
+      console.error('Error fetching projects:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProjectCreated = () => {
+    // Refresh the projects list when a new project is created
+    fetchProjects();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -117,6 +122,7 @@ export default function HomePage() {
           <CreateProjectPopup
             isOpen={isCreatePopupOpen}
             onClose={() => setIsCreatePopupOpen(false)}
+            onProjectCreated={handleProjectCreated}
           />
         )}
       </div>
