@@ -2,6 +2,7 @@
 
 import { Comment, apiService, type ApiResponse } from '@/service';
 import { useState, useEffect } from 'react';
+import TigerLoader from './TigerLoader';
 
 interface ProjectCommentsProps {
   projectId: string;
@@ -88,7 +89,8 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Add a comment..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none placeholder:text-gray-400 text-gray-900"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:border-transparent resize-none placeholder:text-gray-400 text-gray-900"
+          style={{ '--tw-ring-color': '#eb2f96' } as React.CSSProperties}
           rows={3}
           disabled={submitting}
         />
@@ -96,7 +98,10 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
           <button
             type="submit"
             disabled={!newComment.trim() || submitting}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 py-2 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+            style={{ backgroundColor: '#eb2f96' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
           >
             {submitting && (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -112,7 +117,7 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
           // Loading state
           <div className="flex justify-center items-center py-8">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <TigerLoader size="md" className="mx-auto mb-2" />
               <p className="text-gray-600 text-sm">Loading comments...</p>
             </div>
           </div>

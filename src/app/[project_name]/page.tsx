@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ProjectProgress from '../../components/ProjectProgress';
 import TeamSection from '../../components/TeamSection';
 import ProjectComments from '../../components/ProjectComments';
+import TigerLoader from '../../components/TigerLoader';
 import { apiService, ProjectDetails, ApiResponse, Project } from '../../service';
 
 export default function ProjectDetailPage() {
@@ -73,17 +74,16 @@ export default function ProjectDetailPage() {
           <div className="mb-6">
             <Link
               href="/"
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+              className="flex items-center gap-2 hover:underline"
+              style={{ color: '#eb2f96' }}
             >
               ← Back to Projects
             </Link>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <TigerLoader size="lg" className="mx-auto mb-4" />
+              <p className="text-gray-600">Loading project details...</p>
             </div>
           </div>
         </div>
@@ -99,7 +99,8 @@ export default function ProjectDetailPage() {
           <div className="mb-6">
             <Link
               href="/"
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+              className="flex items-center gap-2 hover:underline"
+              style={{ color: '#eb2f96' }}
             >
               ← Back to Projects
             </Link>
@@ -120,7 +121,8 @@ export default function ProjectDetailPage() {
         <div className="mb-6">
           <Link
             href="/"
-            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+            className="flex items-center gap-2 hover:underline"
+            style={{ color: '#eb2f96' }}
           >
             ← Back to Projects
           </Link>
@@ -138,7 +140,7 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600">{project.progress}%</div>
+              <div className="text-2xl font-bold" style={{ color: '#eb2f96' }}>{project.progress}%</div>
               <div className="text-sm text-gray-500">Overall Progress</div>
             </div>
           </div>
