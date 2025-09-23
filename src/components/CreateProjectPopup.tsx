@@ -67,12 +67,40 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
       if (apiService.isSuccess(response)) {
         console.log('Project created successfully:', response.data);
 
+        // Send emails to all PO domains via API route
+        const currentUrl = window.location.origin;
+        try {
+          const emailResponse = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              projectName: formData.name,
+              teams: formData.teams.map(team => ({
+                teamName: team.teamName,
+                PODomain: team.PODomain
+              })),
+              currentUrl
+            })
+          });
+
+          if (emailResponse.ok) {
+            console.log('All assignment emails sent successfully');
+          } else {
+            console.error('Failed to send assignment emails');
+          }
+        } catch (emailError) {
+          console.error('Error sending assignment emails:', emailError);
+          // Don't fail the entire operation if email sending fails
+        }
+
         // Show success notification
         setNotification({
           isOpen: true,
           type: 'success',
           title: 'Project Created Successfully!',
-          message: `Project "${formData.name}" has been created successfully and is now available in your project list.`
+          message: `Project "${formData.name}" has been created successfully and assignment emails have been sent to all PO domains.`
         });
 
         // Reset form
