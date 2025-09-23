@@ -22,7 +22,7 @@ export default function TeamSection({ team, projectName }: TeamSectionProps) {
       case 'Behind Schedule':
         return 'bg-red-100 text-red-800';
       case 'Ahead of Schedule':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-pink-100 text-pink-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -39,20 +39,20 @@ export default function TeamSection({ team, projectName }: TeamSectionProps) {
             {team.status}
           </span>
         </div>
-        
+
         <div className="mb-3">
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm text-gray-500">Progress</span>
             <span className="text-sm font-medium text-gray-900">{team.progress}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all" 
-              style={{ width: `${team.progress}%` }}
+            <div
+              className="h-2 rounded-full transition-all"
+              style={{ backgroundColor: '#eb2f96', width: `${team.progress}%` }}
             />
           </div>
         </div>
-        
+
         <div className="flex justify-between text-sm text-gray-600">
           <span>Tickets: {team.completedTickets}/{team.ticketCount}</span>
           <span>→ View Details</span>

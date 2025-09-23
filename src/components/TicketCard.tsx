@@ -20,7 +20,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
       case 'Completed':
         return 'bg-green-100 text-green-800';
       case 'In Progress':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-pink-100 text-pink-800';
       case 'To Do':
         return 'bg-gray-100 text-gray-800';
       case 'Blocked':
@@ -61,7 +61,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         </div>
         <div className="flex items-center gap-2">
           {ticket.type === 'jira' ? (
-            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+            <span className="px-2 py-1 rounded text-xs font-medium" style={{ backgroundColor: '#f0f9ff', color: '#0369a1' }}>
               TICKET
             </span>
           ) : (
@@ -90,7 +90,7 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         </div>
       </div>
 
-      <div className="mt-3 text-xs text-blue-600 hover:text-blue-800">
+      <div className="mt-3 text-xs hover:underline" style={{ color: '#eb2f96' }}>
         Click to open in {ticket.type === 'jira' ? 'Jira' : 'Google Sheets'} →
       </div>
     </div>

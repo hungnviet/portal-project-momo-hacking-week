@@ -187,7 +187,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                   required
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 text-gray-900"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-200 focus:border-gray-300 placeholder:text-gray-400 text-gray-900"
                   placeholder="Enter project name"
                 />
               </div>
@@ -200,7 +200,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                   required
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 text-gray-900"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-200 focus:border-gray-300 placeholder:text-gray-400 text-gray-900"
                   rows={3}
                   placeholder="Enter project description"
                 />
@@ -216,7 +216,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                     required
                     value={formData.startDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-200 focus:border-gray-300 text-gray-900"
                   />
                 </div>
                 <div>
@@ -228,7 +228,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                     required
                     value={formData.endDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-200 focus:border-gray-300 text-gray-900"
                   />
                 </div>
               </div>
@@ -265,19 +265,19 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                           placeholder="Team Name"
                           value={team.teamName}
                           onChange={(e) => updateTeam(team.id, 'teamName', e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 text-gray-900"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-300 placeholder:text-gray-400 text-gray-900"
                         />
                         <input
                           type="text"
                           placeholder="PO Domain"
                           value={team.PODomain}
                           onChange={(e) => updateTeam(team.id, 'PODomain', e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 text-gray-900"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-300 placeholder:text-gray-400 text-gray-900"
                         />
                         <select
                           value={team.trackingMethod}
                           onChange={(e) => updateTeam(team.id, 'trackingMethod', e.target.value as 'Jira' | 'Sheet')}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-300 text-gray-900 bg-white"
                         >
                           <option value="Jira">Jira</option>
                           <option value="Sheet">Sheet</option>
@@ -286,7 +286,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                           placeholder="Description"
                           value={team.teamDesc}
                           onChange={(e) => updateTeam(team.id, 'teamDesc', e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 text-gray-900"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-300 placeholder:text-gray-400 text-gray-900"
                           rows={2}
                         />
                       </div>
@@ -312,7 +312,10 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: '#eb2f96' }}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#d61c6a')}
+                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#eb2f96')}
                 >
                   {isLoading ? 'Creating...' : 'Create Project'}
                 </button>

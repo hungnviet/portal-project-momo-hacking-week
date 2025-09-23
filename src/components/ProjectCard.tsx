@@ -17,7 +17,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'In Progress':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-pink-100 text-pink-800';
       case 'Planning':
         return 'bg-yellow-100 text-yellow-800';
       case 'Completed':
@@ -40,25 +40,25 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             {project.status}
           </span>
         </div>
-        
+
         <p className="text-gray-600 text-sm mb-4 line-clamp-2">{project.description}</p>
-        
+
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-gray-500">Progress</span>
             <span className="text-sm font-medium text-gray-900">{project.progress}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all" 
-              style={{ width: `${project.progress}%` }}
+            <div
+              className="h-2 rounded-full transition-all"
+              style={{ backgroundColor: '#eb2f96', width: `${project.progress}%` }}
             />
           </div>
         </div>
-        
+
         <div className="flex flex-wrap gap-2">
           {project.teams.map((team) => (
-            <span 
+            <span
               key={team}
               className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
             >

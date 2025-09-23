@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
+import TigerLoader from '../../../components/TigerLoader';
 import { apiService, type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse } from '../../../service';
 import { url } from 'inspector';
 
@@ -265,14 +266,15 @@ export default function TeamDetailPage() {
           <div className="mb-6">
             <Link
               href={`/${projectName}`}
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+              className="flex items-center gap-2 hover:underline"
+              style={{ color: '#eb2f96' }}
             >
               ← Back to {decodeURIComponent(projectName)}
             </Link>
           </div>
           <div className="flex justify-center items-center py-12">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <TigerLoader size="lg" className="mx-auto mb-4" />
               <p className="text-gray-600">Loading team details...</p>
             </div>
           </div>
@@ -289,7 +291,8 @@ export default function TeamDetailPage() {
           <div className="mb-6">
             <Link
               href={`/${projectName}`}
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+              className="flex items-center gap-2 hover:underline"
+              style={{ color: '#eb2f96' }}
             >
               ← Back to {decodeURIComponent(projectName)}
             </Link>
@@ -301,7 +304,10 @@ export default function TeamDetailPage() {
               <p className="text-gray-600 text-sm">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                className="mt-4 text-white px-4 py-2 rounded transition-colors"
+                style={{ backgroundColor: '#eb2f96' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
               >
                 Try Again
               </button>
@@ -342,7 +348,8 @@ export default function TeamDetailPage() {
         <div className="mb-6">
           <Link
             href={`/${projectName}`}
-            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+            className="flex items-center gap-2 hover:underline"
+            style={{ color: '#eb2f96' }}
           >
             ← Back to {decodeURIComponent(projectName)}
           </Link>
@@ -360,12 +367,18 @@ export default function TeamDetailPage() {
             <div className="flex gap-2">
               {teamData.trackMethod === 'jira' ? (
                 <>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                  <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#f0f9ff', color: '#0369a1' }}>
                     Jira Tickets
                   </span>
                   <button
                     onClick={() => setShowAddModal(true)}
-                    className="inline-flex items-center px-3 py-1 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="inline-flex items-center px-3 py-1 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: '#eb2f96',
+                      '--tw-ring-color': '#eb2f96'
+                    } as React.CSSProperties}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
                   >
                     <svg
                       className="-ml-1 mr-1 h-4 w-4"
@@ -514,7 +527,8 @@ export default function TeamDetailPage() {
                     ? 'https://company.atlassian.net/browse/TICKET-123'
                     : 'https://docs.google.com/spreadsheets/d/...'
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:placeholder-gray-400"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:placeholder-gray-400"
+                  style={{ '--tw-ring-color': '#eb2f96', borderColor: '#eb2f96' } as React.CSSProperties}
                 />
               </div>
 
@@ -528,7 +542,13 @@ export default function TeamDetailPage() {
                 <button
                   onClick={handleAddLink}
                   disabled={!linkInput.trim() || addingTask}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  style={{
+                    backgroundColor: '#eb2f96',
+                    '--tw-ring-color': '#eb2f96'
+                  } as React.CSSProperties}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#d61c6a')}
+                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#eb2f96')}
                 >
                   {addingTask ? (
                     <>

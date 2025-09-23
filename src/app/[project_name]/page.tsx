@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ProjectProgress from '../../components/ProjectProgress';
 import TeamSection from '../../components/TeamSection';
 import ProjectComments from '../../components/ProjectComments';
+import TigerLoader from '../../components/TigerLoader';
 import { apiService, ProjectDetails, ApiResponse, Project } from '../../service';
 
 export default function ProjectDetailPage() {
@@ -73,7 +74,8 @@ export default function ProjectDetailPage() {
           <div className="mb-6">
             <Link
               href="/"
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+              className="flex items-center gap-2 hover:underline"
+              style={{ color: '#eb2f96' }}
             >
               ← Back to Projects
             </Link>
@@ -99,7 +101,8 @@ export default function ProjectDetailPage() {
           <div className="mb-6">
             <Link
               href="/"
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+              className="flex items-center gap-2 hover:underline"
+              style={{ color: '#eb2f96' }}
             >
               ← Back to Projects
             </Link>
@@ -120,7 +123,8 @@ export default function ProjectDetailPage() {
         <div className="mb-6">
           <Link
             href="/"
-            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+            className="flex items-center gap-2 hover:underline"
+            style={{ color: '#eb2f96' }}
           >
             ← Back to Projects
           </Link>
@@ -138,7 +142,7 @@ export default function ProjectDetailPage() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600">{project.progress}%</div>
+              <div className="text-2xl font-bold" style={{ color: '#eb2f96' }}>{project.progress}%</div>
               <div className="text-sm text-gray-500">Overall Progress</div>
             </div>
           </div>

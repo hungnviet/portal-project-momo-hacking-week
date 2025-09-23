@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import CreateProjectPopup from '../components/CreateProjectPopup';
 import ProjectCard from '../components/ProjectCard';
+import TigerLoader from '../components/TigerLoader';
 import { apiService, type Project, type ApiResponse } from '../service';
 
 
@@ -53,7 +54,10 @@ export default function HomePage() {
           </div>
           <button
             onClick={() => setIsCreatePopupOpen(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            className="text-white px-6 py-3 rounded-lg transition-colors"
+            style={{ backgroundColor: '#eb2f96' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
           >
             Create New Project
           </button>
@@ -65,7 +69,7 @@ export default function HomePage() {
             // Loading state
             <div className="col-span-full flex justify-center items-center py-12">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <TigerLoader size="lg" className="mx-auto mb-4" />
                 <p className="text-gray-600">Loading projects...</p>
               </div>
             </div>
@@ -78,7 +82,10 @@ export default function HomePage() {
                 <p className="text-gray-600 text-sm">{error}</p>
                 <button
                   onClick={() => window.location.reload()}
-                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                  className="mt-4 text-white px-4 py-2 rounded transition-colors"
+                  style={{ backgroundColor: '#eb2f96' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
                 >
                   Try Again
                 </button>
@@ -93,7 +100,10 @@ export default function HomePage() {
                 <p className="text-gray-500 text-sm mb-4">Get started by creating your first project</p>
                 <button
                   onClick={() => setIsCreatePopupOpen(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                  className="text-white px-4 py-2 rounded transition-colors"
+                  style={{ backgroundColor: '#eb2f96' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
                 >
                   Create Project
                 </button>
