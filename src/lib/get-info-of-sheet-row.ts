@@ -20,7 +20,7 @@ export async function getSheetRowData(rowUrl: string): Promise<DynamicTaskRowDat
     const targetRowNumber = extractRowNumberFromRowUrl(rowUrl);
 
     // Load service account credentials
-    const credentialsPath = path.join(process.cwd(), 'momo-472913-70f48a1ee510.json');
+    const credentialsPath = path.join(process.cwd(), 'momo-472913-fa3cd9053f32.json');
 
     // Create JWT client for service account authentication
     const auth = new google.auth.GoogleAuth({
