@@ -5,12 +5,14 @@ import CreateProjectPopup from '../components/CreateProjectPopup';
 import ProjectCard from '../components/ProjectCard';
 import TigerLoader from '../components/TigerLoader';
 import Header from '../components/Header';
+import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import { type Project, type ApiResponse } from '../service';
 import { CachedApiService } from '../services/cachedApiService';
 import { useTaskStatus } from '../contexts/TaskStatusContext';
 
 export default function HomePage() {
   const [isCreatePopupOpen, setIsCreatePopupOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,21 +68,43 @@ export default function HomePage() {
   const getEnhancedProjectData = (project: Project) => {
     const taskProgress = getProjectProgress(parseInt(project.projectId));
 
+    // Determine if project has tasks
+    const hasTasks = taskProgress && taskProgress.totalTasks > 0;
+    
+    // If no tasks, it's in planning phase
+    const effectiveStatus = !hasTasks ? 'Planning' : project.status;
+    
+    // Calculate progress based on tasks only
+    let effectiveProgress = 0;
+    if (hasTasks && taskProgress) {
+      // Progress is calculated as (done tasks / total tasks) * 100
+      effectiveProgress = taskProgress.totalTasks > 0 
+        ? Math.round((taskProgress.doneTasks / taskProgress.totalTasks) * 100)
+        : 0;
+    }
+    // If no tasks, progress should be 0% regardless of API progress
+
     return {
       id: project.projectId,
       name: project.projectName,
       description: project.projectDesc,
-      status: project.status,
+      status: effectiveStatus,
       teams: project.teamNameList,
-      // Use real progress from tasks if available, otherwise fallback to API progress
-      progress: taskProgress ? taskProgress.progress : project.progress,
+      progress: effectiveProgress,
       // Additional data from task analysis
       taskStats: taskProgress ? {
         totalTasks: taskProgress.totalTasks,
         doneTasks: taskProgress.doneTasks,
         inProgressTasks: taskProgress.inProgressTasks,
-        statusBreakdown: taskProgress.statusBreakdown
-      } : null
+        statusBreakdown: taskProgress.statusBreakdown,
+        hasTasks: !!hasTasks
+      } : {
+        totalTasks: 0,
+        doneTasks: 0,
+        inProgressTasks: 0,
+        statusBreakdown: {},
+        hasTasks: false
+      }
     };
   };
 
@@ -92,6 +116,18 @@ export default function HomePage() {
         isRefreshing={loading || taskStatusLoading}
         lastUpdated={lastUpdated || undefined}
       >
+        {/* Analytics Button */}
+        <button
+          onClick={() => setIsAnalyticsOpen(true)}
+          className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 group mr-3"
+        >
+          <svg className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2V7a2 2 0 012-2h2a2 2 0 002 2v2a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 00-2 2h-2a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2h-2a2 2 0 00-2-2V9a2 2 0 002-2h2a2 2 0 002 2v2" />
+          </svg>
+          <span className="hidden sm:inline">View Analytics</span>
+          <span className="sm:hidden">Analytics</span>
+        </button>
+
         {/* Create Project Button */}
         <button
           onClick={() => setIsCreatePopupOpen(true)}
@@ -235,19 +271,28 @@ export default function HomePage() {
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="text-2xl font-bold text-green-600">
-                  {projects.filter(p => p.status === 'Completed').length}
+                  {projects.filter(p => {
+                    const enhanced = getEnhancedProjectData(p);
+                    return enhanced.status === 'Completed';
+                  }).length}
                 </div>
                 <div className="text-sm text-gray-600">Completed</div>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="text-2xl font-bold text-blue-600">
-                  {projects.filter(p => p.status === 'In Progress').length}
+                  {projects.filter(p => {
+                    const enhanced = getEnhancedProjectData(p);
+                    return enhanced.status === 'In Progress';
+                  }).length}
                 </div>
                 <div className="text-sm text-gray-600">In Progress</div>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="text-2xl font-bold text-yellow-600">
-                  {projects.filter(p => p.status === 'Planning').length}
+                  {projects.filter(p => {
+                    const enhanced = getEnhancedProjectData(p);
+                    return enhanced.status === 'Planning';
+                  }).length}
                 </div>
                 <div className="text-sm text-gray-600">Planning</div>
               </div>
@@ -281,6 +326,13 @@ export default function HomePage() {
             onProjectCreated={handleProjectCreated}
           />
         )}
+
+        {/* Analytics Dashboard */}
+        <AnalyticsDashboard
+          projects={projects.map(project => getEnhancedProjectData(project))}
+          isOpen={isAnalyticsOpen}
+          onClose={() => setIsAnalyticsOpen(false)}
+        />
       </div>
     </div>
   );

@@ -187,7 +187,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
+      <div className="fixed inset-0 bg-white/20 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in-up">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-pink-400 to-blue-400 px-8 py-6 text-white">

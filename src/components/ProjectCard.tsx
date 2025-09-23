@@ -12,6 +12,7 @@ interface Project {
     doneTasks: number;
     inProgressTasks: number;
     statusBreakdown: { [status: string]: number };
+    hasTasks: boolean;
   } | null;
 }
 
@@ -111,23 +112,35 @@ export default function ProjectCard({ project }: ProjectCardProps) {
               />
             </div>
 
-            {/* Task Statistics */}
-            {project.taskStats && (
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100 group-hover:shadow-sm transition-shadow">
-                  <div className="text-lg font-bold text-green-700">{project.taskStats.doneTasks}</div>
-                  <div className="text-xs text-green-600 font-medium">Done</div>
+            {/* Task Statistics or No Tasks Message */}
+            {project.taskStats ? (
+              project.taskStats.hasTasks ? (
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100 group-hover:shadow-sm transition-shadow">
+                    <div className="text-lg font-bold text-green-700">{project.taskStats.doneTasks}</div>
+                    <div className="text-xs text-green-600 font-medium">Done</div>
+                  </div>
+                  <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-100 group-hover:shadow-sm transition-shadow">
+                    <div className="text-lg font-bold text-blue-700">{project.taskStats.inProgressTasks}</div>
+                    <div className="text-xs text-blue-600 font-medium">In Progress</div>
+                  </div>
+                  <div className="text-center p-3 bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg border border-gray-100 group-hover:shadow-sm transition-shadow">
+                    <div className="text-lg font-bold text-gray-700">{project.taskStats.totalTasks}</div>
+                    <div className="text-xs text-gray-600 font-medium">Total</div>
+                  </div>
                 </div>
-                <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-100 group-hover:shadow-sm transition-shadow">
-                  <div className="text-lg font-bold text-blue-700">{project.taskStats.inProgressTasks}</div>
-                  <div className="text-xs text-blue-600 font-medium">In Progress</div>
+              ) : (
+                <div className="mt-4 text-center p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center justify-center mb-2">
+                    <svg className="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0-6v6m6-2a2 2 0 002-2V7a2 2 0 00-2-2h-2m0 0V3a2 2 0 00-2 2v2m0 0h2m0 0v2" />
+                    </svg>
+                    <span className="text-sm font-medium text-yellow-800">No tasks yet</span>
+                  </div>
+                  <p className="text-xs text-yellow-700">Project is in planning phase</p>
                 </div>
-                <div className="text-center p-3 bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg border border-gray-100 group-hover:shadow-sm transition-shadow">
-                  <div className="text-lg font-bold text-gray-700">{project.taskStats.totalTasks}</div>
-                  <div className="text-xs text-gray-600 font-medium">Total</div>
-                </div>
-              </div>
-            )}
+              )
+            ) : null}
           </div>
 
           {/* Teams */}
