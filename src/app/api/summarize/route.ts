@@ -112,10 +112,12 @@ export async function generateProjectSummary(
     }
 
     // Generate summary using OpenAI
-    const prompt = `Please summarize the following project content in approximately 150-200 words. Focus on the main points, key features, and important information:\n\n${contextText}`;
+    const prompt = `Please summarize the following project content in approximately 300-400 words. Focus on the main points, key features, and important information:\n\n${contextText}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      // model: "gpt-3.5-turbo",
+      model: "gemini-2.5-flash",
+      reasoning_effort: "low",
       // model: "wedjat/gpt-120b-oss"
       messages: [
         {
