@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { TaskData } from '@/service';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1',
 });
 
 interface SummaryResponse {
@@ -19,26 +20,20 @@ interface SummaryResponse {
 }
 
 // This function would fetch context based on teamId and projectId
-// You'll need to implement this based on your database/data source
-async function getContextByTeamAndProject(teamId: string, projectId: string): Promise<string> {
-  // STEP 1: Fetch your actual data (replace placeholder with real fetching logic)
-  // Example:
-  // const project = await db.projects.findFirst({ where: { id: projectId, teamId } });
-  // const tasks = await db.tasks.findMany({ where: { projectId } });
-  // const team = await db.teams.findFirst({ where: { id: teamId } });
+async function getContextByTeamAndProject(
+  projectDescription: string, 
+  teamDescription: string, 
+  tasksTable: TaskData[]
+): Promise<string> {
 
-  const projectDescription = "Room Management System for internal scheduling. Focus: reliability, availability, security.";
-  const teamDescription = "6-person team: 2 UI devs, 2 DB engineers, 2 backend engineers.";
-  const tasksTable = `
-| Task | Assignee | Due Date | Priority | Status | Notes |
-|------|----------|----------|----------|--------|-------|
-| Setup Nginx gateway | Loc | 2025-09-25 | High | In Progress | 80% done |
-| Build booking API | Alice | 2025-09-27 | High | Not Started | Waiting for DB schema |
-| Design DB schema | Bob | 2025-09-23 | High | Completed | Reviewed by backend team |
-| Implement caching layer | Carol | 2025-09-28 | Medium | In Progress | Redis container running |
-  `;
-
-  // STEP 2: Build a single string with the prompt template
+  //   const tasksTable = `
+// | Task | Assignee | Due Date | Priority | Status | Notes |
+// |------|----------|----------|----------|--------|-------|
+// | Setup Nginx gateway | Loc | 2025-09-25 | High | In Progress | 80% done |
+// | Build booking API | Alice | 2025-09-27 | High | Not Started | Waiting for DB schema |
+// | Design DB schema | Bob | 2025-09-23 | High | Completed | Reviewed by backend team |
+// | Implement caching layer | Carol | 2025-09-28 | Medium | In Progress | Redis container running |
+//   `;
   const prompt = `
 Generate a structured progress report based on the provided project context and task details.
 
@@ -49,7 +44,7 @@ ${projectDescription}
 ${teamDescription}
 
 ### Task Details
-${tasksTable}
+${JSON.stringify(tasksTable, null, 2)}
 
 ### Requirements for Report
 1. **Executive Summary** - 3-4 sentences summarizing project health (on-track, delayed, etc.).
@@ -64,50 +59,56 @@ Format the report in clear sections with headings, making it easy to scan quickl
   return prompt;
 }
 
-export async function GET(request: NextRequest) {
+export async function generateProjectSummary(
+  teamId: string,
+  projectId: string,
+  projectDescription: string,
+  teamDescription: string,
+  tasksTable: TaskData[]
+): Promise<SummaryResponse> {
   try {
-    const { searchParams } = new URL(request.url);
-    const teamId = searchParams.get('teamId');
-    const projectId = searchParams.get('projectId');
-
     // Validate required parameters
     if (!teamId) {
-      return NextResponse.json({
+      return {
         status: 'error',
         errorCode: 'MISSING_TEAM_ID',
         message: 'teamId parameter is required',
         data: null
-      }, { status: 400 });
+      };
     }
 
     if (!projectId) {
-      return NextResponse.json({
+      return {
         status: 'error',
         errorCode: 'MISSING_PROJECT_ID',
         message: 'projectId parameter is required',
         data: null
-      }, { status: 400 });
+      };
     }
 
-    // Get context from teamId and projectId
-    const contextText = await getContextByTeamAndProject(teamId, projectId);
+    // Get context from parameters
+    const contextText = await getContextByTeamAndProject(
+      projectDescription, 
+      teamDescription, 
+      tasksTable
+    );
 
     if (!contextText || contextText.trim().length === 0) {
-      return NextResponse.json({
+      return {
         status: 'error',
         errorCode: 'NO_CONTENT_FOUND',
         message: 'No content found for the specified team and project',
         data: null
-      }, { status: 404 });
+      };
     }
 
     if (contextText.length < 50) {
-      return NextResponse.json({
+      return {
         status: 'error',
         errorCode: 'INSUFFICIENT_CONTENT',
         message: 'Content too short to summarize (minimum 50 characters)',
         data: null
-      }, { status: 400 });
+      };
     }
 
     // Generate summary using OpenAI
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest) {
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
+      // model: "wedjat/gpt-120b-oss"
       messages: [
         {
           role: "system",
@@ -132,15 +134,15 @@ export async function GET(request: NextRequest) {
     const summary = completion.choices[0]?.message?.content;
 
     if (!summary) {
-      return NextResponse.json({
+      return {
         status: 'error',
         errorCode: 'SUMMARY_GENERATION_FAILED',
         message: 'Failed to generate summary',
         data: null
-      }, { status: 500 });
+      };
     }
 
-    const response: SummaryResponse = {
+    return {
       status: 'success',
       message: 'Summary generated successfully',
       data: {
@@ -152,15 +154,13 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    return NextResponse.json(response, { status: 200 });
-
   } catch (error) {
-    console.error('Error in GET /api/summarize:', error);
-    return NextResponse.json({
+    console.error('Error in generateProjectSummary:', error);
+    return {
       status: 'error',
       errorCode: 'INTERNAL_ERROR',
       message: 'Internal server error',
       data: null
-    }, { status: 500 });
+    };
   }
 }
