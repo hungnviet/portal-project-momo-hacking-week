@@ -15,6 +15,7 @@ interface TeamData {
   name: string;
   description: string;
   projectName: string;
+  projectDescription: string;
   progress: number;
   totalTickets: number;
   completedTickets: number;
@@ -60,7 +61,8 @@ const transformApiResponseToTeamData = (
   apiData: TeamApiResponse,
   teamName: string,
   teamDescription: string,
-  projectName: string
+  projectName: string,
+  projectDescription: string,
 ): TeamData => {
   const tickets = apiData.taskList.map((task, index) =>
     transformTaskToTicket(task, index)
@@ -87,6 +89,7 @@ const transformApiResponseToTeamData = (
     name: teamName,
     description: teamDescription,
     projectName: projectName,
+    projectDescription: projectDescription,
     progress: apiData.progress,
     totalTickets: tickets.length,
     completedTickets,
@@ -111,6 +114,8 @@ export default function TeamDetailPage() {
   const [addingTask, setAddingTask] = useState(false);
   const [teamId, setTeamId] = useState<number | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   // Fetch team details on component mount
   const fetchTeamDetails = async () => {
@@ -169,7 +174,7 @@ export default function TeamDetailPage() {
       const response: ApiResponse<TeamApiResponse> = await apiService.getTeamDetails(teamId, projectId);
 
       if (apiService.isSuccess(response)) {
-        const transformedData = transformApiResponseToTeamData(response.data, decodedTeamName, matchingTeam.teamDesc, decodedProjectName);
+        const transformedData = transformApiResponseToTeamData(response.data, decodedTeamName, matchingTeam.teamDesc, decodedProjectName, matchingProject.projectDesc);
         setTeamData(transformedData);
       } else {
         setError(apiService.getErrorMessage(response));
@@ -179,6 +184,51 @@ export default function TeamDetailPage() {
       console.error('Error fetching team details:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateSummary = async () => {
+    if (!teamData) return;
+
+    try {
+      setGeneratingSummary(true);
+
+      // Transform team data into the format expected by the API
+      const tasksTable = teamData.tickets.map(ticket => ({
+        id: ticket.id,
+        ticketName: ticket.title,
+        assignee: ticket.assignee,
+        duedate: ticket.duedate,
+        ticketPriority: ticket.priority,
+        ticketStatus: ticket.status,
+        startdate: ticket.startdate,
+        type: ticket.type as 'jira' | 'sheet',
+        url: ticket.url
+      }));
+
+      const response = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectDescription: teamData.projectDescription,
+          teamDescription: teamData.description,
+          tasksTable: tasksTable,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate summary');
+      }
+
+      const data = await response.json();
+      setSummary(data.summary);
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      alert('Failed to generate summary. Please try again.');
+    } finally {
+      setGeneratingSummary(false);
     }
   };
 
@@ -357,6 +407,52 @@ export default function TeamDetailPage() {
 
         {/* Team Header */}
         <TeamHeader team={{ ...teamData, tickets: teamData.tickets }} />
+
+        {/* Generate Summary Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Project Summary</h2>
+            <button
+              onClick={generateSummary}
+              disabled={generatingSummary}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: '#eb2f96',
+                '--tw-ring-color': '#eb2f96'
+              } as React.CSSProperties}
+              onMouseEnter={(e) => !generatingSummary && (e.currentTarget.style.backgroundColor = '#d61c6a')}
+              onMouseLeave={(e) => !generatingSummary && (e.currentTarget.style.backgroundColor = '#eb2f96')}
+            >
+              {generatingSummary ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <svg className="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Generate Summary
+                </>
+              )}
+            </button>
+          </div>
+
+          {summary && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-900 mb-2">Generated Summary</h3>
+              <div className="text-sm text-gray-700 whitespace-pre-wrap">{summary}</div>
+            </div>
+          )}
+
+          {!summary && !generatingSummary && (
+            <p className="text-gray-500 text-sm">Click "Generate Summary" to create an AI-powered project report based on your current tasks and progress.</p>
+          )}
+        </div>
 
         {/* Tickets Section */}
         <div className="bg-white rounded-lg shadow-sm p-6">

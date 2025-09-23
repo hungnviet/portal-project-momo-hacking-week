@@ -1,39 +1,26 @@
 import OpenAI from 'openai';
 import { TaskData } from '@/service';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1',
-});
-
-interface SummaryResponse {
-  status: 'success' | 'error';
-  errorCode?: string;
-  message: string;
-  data: {
-    summary: string;
-    originalLength: number;
-    summaryLength: number;
-    teamId: string;
-    projectId: string;
-  } | null;
-}
+// const openai = new OpenAI({
+//   apiKey: process.env.OPENAI_API_KEY,
+//   baseURL: process.env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1',
+// });
 
 // This function would fetch context based on teamId and projectId
 async function getContextByTeamAndProject(
-  projectDescription: string, 
-  teamDescription: string, 
+  projectDescription: string,
+  teamDescription: string,
   tasksTable: TaskData[]
 ): Promise<string> {
 
   //   const tasksTable = `
-// | Task | Assignee | Due Date | Priority | Status | Notes |
-// |------|----------|----------|----------|--------|-------|
-// | Setup Nginx gateway | Loc | 2025-09-25 | High | In Progress | 80% done |
-// | Build booking API | Alice | 2025-09-27 | High | Not Started | Waiting for DB schema |
-// | Design DB schema | Bob | 2025-09-23 | High | Completed | Reviewed by backend team |
-// | Implement caching layer | Carol | 2025-09-28 | Medium | In Progress | Redis container running |
-//   `;
+  // | Task | Assignee | Due Date | Priority | Status | Notes |
+  // |------|----------|----------|----------|--------|-------|
+  // | Setup Nginx gateway | Loc | 2025-09-25 | High | In Progress | 80% done |
+  // | Build booking API | Alice | 2025-09-27 | High | Not Started | Waiting for DB schema |
+  // | Design DB schema | Bob | 2025-09-23 | High | Completed | Reviewed by backend team |
+  // | Implement caching layer | Carol | 2025-09-28 | Medium | In Progress | Redis container running |
+  //   `;
   const prompt = `
 Generate a structured progress report based on the provided project context and task details.
 
@@ -60,107 +47,87 @@ Format the report in clear sections with headings, making it easy to scan quickl
 }
 
 export async function generateProjectSummary(
-  teamId: string,
-  projectId: string,
   projectDescription: string,
   teamDescription: string,
   tasksTable: TaskData[]
-): Promise<SummaryResponse> {
+): Promise<string> {
   try {
-    // Validate required parameters
-    if (!teamId) {
-      return {
-        status: 'error',
-        errorCode: 'MISSING_TEAM_ID',
-        message: 'teamId parameter is required',
-        data: null
-      };
-    }
+    // // Get context from parameters
+    // const contextText = await getContextByTeamAndProject(
+    //   projectDescription,
+    //   teamDescription,
+    //   tasksTable
+    // );
 
-    if (!projectId) {
-      return {
-        status: 'error',
-        errorCode: 'MISSING_PROJECT_ID',
-        message: 'projectId parameter is required',
-        data: null
-      };
-    }
+    // if (!contextText || contextText.trim().length === 0) {
+    //   throw new Error('No content found for the specified team and project');
+    // }
 
-    // Get context from parameters
-    const contextText = await getContextByTeamAndProject(
-      projectDescription, 
-      teamDescription, 
-      tasksTable
-    );
+    // if (contextText.length < 50) {
+    //   throw new Error('Content too short to summarize (minimum 50 characters)');
+    // }
 
-    if (!contextText || contextText.trim().length === 0) {
-      return {
-        status: 'error',
-        errorCode: 'NO_CONTENT_FOUND',
-        message: 'No content found for the specified team and project',
-        data: null
-      };
-    }
+    // // Generate summary using OpenAI
+    // const prompt = `Please summarize the following project content in approximately 150-200 words. Focus on the main points, key features, and important information:\n\n${contextText}`;
 
-    if (contextText.length < 50) {
-      return {
-        status: 'error',
-        errorCode: 'INSUFFICIENT_CONTENT',
-        message: 'Content too short to summarize (minimum 50 characters)',
-        data: null
-      };
-    }
+    // const completion = await openai.chat.completions.create({
+    //   model: "gpt-3.5-turbo",
+    //   // model: "wedjat/gpt-120b-oss"
+    //   messages: [
+    //     {
+    //       role: "system",
+    //       content: "You are an assistant that generates clear, concise, and actionable progress reports for project management. You summarize status updates, highlight blockers, and suggest next steps in a professional tone."
+    //     },
+    //     {
+    //       role: "user",
+    //       content: prompt
+    //     }
+    //   ],
+    //   max_tokens: 500,
+    //   temperature: 0.5,
+    // });
 
-    // Generate summary using OpenAI
-    const prompt = `Please summarize the following project content in approximately 150-200 words. Focus on the main points, key features, and important information:\n\n${contextText}`;
+    // const summary = completion.choices[0]?.message?.content;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      // model: "wedjat/gpt-120b-oss"
-      messages: [
-        {
-          role: "system",
-          content: "You are an assistant that generates clear, concise, and actionable progress reports for project management. You summarize status updates, highlight blockers, and suggest next steps in a professional tone."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 500,
-      temperature: 0.5,
-    });
+    // if (!summary) {
+    //   throw new Error('Failed to generate summary');
+    // }
 
-    const summary = completion.choices[0]?.message?.content;
+    // return summary.trim();
 
-    if (!summary) {
-      return {
-        status: 'error',
-        errorCode: 'SUMMARY_GENERATION_FAILED',
-        message: 'Failed to generate summary',
-        data: null
-      };
-    }
-
-    return {
-      status: 'success',
-      message: 'Summary generated successfully',
-      data: {
-        summary: summary.trim(),
-        originalLength: contextText.length,
-        summaryLength: summary.trim().length,
-        teamId,
-        projectId,
-      },
-    };
-
+    return `Có key hong mà đòi ra kết quả
+      ${projectDescription}\n
+      ${teamDescription}\n
+      ${JSON.stringify(tasksTable, null, 2)}
+    `;
   } catch (error) {
     console.error('Error in generateProjectSummary:', error);
-    return {
-      status: 'error',
-      errorCode: 'INTERNAL_ERROR',
-      message: 'Internal server error',
-      data: null
-    };
+    throw error;
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { projectDescription, teamDescription, tasksTable } = await request.json();
+
+    if (!projectDescription || !teamDescription || !tasksTable) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameters: projectDescription, teamDescription, tasksTable' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const summary = await generateProjectSummary(projectDescription, teamDescription, tasksTable);
+
+    return new Response(
+      JSON.stringify({ summary }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error in POST /api/summarize:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to generate summary' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }

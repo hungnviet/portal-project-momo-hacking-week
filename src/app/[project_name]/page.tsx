@@ -80,12 +80,10 @@ export default function ProjectDetailPage() {
               ← Back to Projects
             </Link>
           </div>
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <TigerLoader size="lg" className="mx-auto mb-4" />
+              <p className="text-gray-600">Loading project details...</p>
             </div>
           </div>
         </div>
