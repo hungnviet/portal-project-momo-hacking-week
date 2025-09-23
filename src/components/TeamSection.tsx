@@ -7,6 +7,12 @@ interface Team {
   ticketCount: number;
   completedTickets: number;
   status: string;
+  taskStats?: {
+    totalTasks: number;
+    doneTasks: number;
+    inProgressTasks: number;
+    statusBreakdown: { [status: string]: number };
+  } | null;
 }
 
 interface TeamSectionProps {
@@ -53,8 +59,30 @@ export default function TeamSection({ team, projectName }: TeamSectionProps) {
           </div>
         </div>
 
-        <div className="flex justify-between text-sm text-gray-600">
-          <span>Tickets: {team.completedTickets}/{team.ticketCount}</span>
+        {/* Enhanced task statistics */}
+        {team.taskStats ? (
+          <div className="grid grid-cols-3 gap-2 text-xs mb-3">
+            <div className="text-center p-2 bg-green-50 rounded">
+              <div className="font-semibold text-green-700">{team.taskStats.doneTasks}</div>
+              <div className="text-green-600">Done</div>
+            </div>
+            <div className="text-center p-2 bg-blue-50 rounded">
+              <div className="font-semibold text-blue-700">{team.taskStats.inProgressTasks}</div>
+              <div className="text-blue-600">In Progress</div>
+            </div>
+            <div className="text-center p-2 bg-gray-50 rounded">
+              <div className="font-semibold text-gray-700">{team.taskStats.totalTasks}</div>
+              <div className="text-gray-600">Total</div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-between text-sm text-gray-600 mb-3">
+            <span>Tickets: {team.completedTickets}/{team.ticketCount}</span>
+            <span className="text-yellow-600 text-xs">Basic data</span>
+          </div>
+        )}
+
+        <div className="flex justify-end text-sm text-gray-500">
           <span>→ View Details</span>
         </div>
       </div>

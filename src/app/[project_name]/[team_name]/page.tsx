@@ -6,8 +6,9 @@ import { useState, useEffect } from 'react';
 import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
 import TigerLoader from '../../../components/TigerLoader';
-import { apiService, type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse } from '../../../service';
-import { url } from 'inspector';
+import Header from '../../../components/Header';
+import { type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse } from '../../../service';
+import { CachedApiService } from '../../../services/cachedApiService';
 
 // Interface for the component's team data structure
 interface TeamData {
@@ -107,37 +108,43 @@ export default function TeamDetailPage() {
 
   // State management
   const [teamData, setTeamData] = useState<TeamData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [linkInput, setLinkInput] = useState('');
-  const [addingTask, setAddingTask] = useState(false);
-  const [teamId, setTeamId] = useState<number | null>(null);
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [summary, setSummary] = useState<string>('');
+  const [generatingSummary, setGeneratingSummary] = useState<boolean>(false);
 
-  // Fetch team details on component mount
-  const fetchTeamDetails = async () => {
+  // Modal state
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [linkInput, setLinkInput] = useState<string>('');
+  const [addingTask, setAddingTask] = useState<boolean>(false);
+
+  // IDs for adding tasks
+  const [teamId, setTeamId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (projectName && teamName) {
+      fetchTeamData();
+    }
+  }, [projectName, teamName]);
+
+  const fetchTeamData = async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
 
-      // First, get all projects to find the matching project and team IDs
       const decodedProjectName = decodeURIComponent(projectName);
       const decodedTeamName = decodeURIComponent(teamName);
 
-      // Fetch all projects to find the one with matching name
-      const projectsResponse = await apiService.getProjects();
-
-      if (!apiService.isSuccess(projectsResponse)) {
-        setError(apiService.getErrorMessage(projectsResponse));
+      // First, get all projects to find the matching one
+      const projectsResponse = await CachedApiService.getProjects(forceRefresh);
+      if (!CachedApiService.isSuccess(projectsResponse)) {
+        setError(CachedApiService.getErrorMessage(projectsResponse));
         return;
       }
 
-      // Find the project with matching name
       const matchingProject = projectsResponse.data.find(
-        (p: any) => p.projectName === decodedProjectName
+        (p: Project) => p.projectName === decodedProjectName
       );
 
       if (!matchingProject) {
@@ -145,11 +152,11 @@ export default function TeamDetailPage() {
         return;
       }
 
-      // Now fetch detailed project data to get team information
-      const projectDetailResponse = await apiService.getProject(matchingProject.projectId);
+      // Get project details to find the team
+      const projectDetailResponse = await CachedApiService.getProject(matchingProject.projectId, forceRefresh);
 
-      if (!apiService.isSuccess(projectDetailResponse)) {
-        setError(apiService.getErrorMessage(projectDetailResponse));
+      if (!CachedApiService.isSuccess(projectDetailResponse)) {
+        setError(CachedApiService.getErrorMessage(projectDetailResponse));
         return;
       }
 
@@ -169,15 +176,15 @@ export default function TeamDetailPage() {
 
       // Store the IDs for later use in addTask
       setTeamId(teamId);
-      setProjectId(projectId);
+      setProjectId(parseInt(projectId.toString()));
 
-      const response: ApiResponse<TeamApiResponse> = await apiService.getTeamDetails(teamId, projectId);
+      const response: ApiResponse<TeamApiResponse> = await CachedApiService.getTeamDetails(teamId, projectId, forceRefresh);
 
-      if (apiService.isSuccess(response)) {
+      if (CachedApiService.isSuccess(response)) {
         const transformedData = transformApiResponseToTeamData(response.data, decodedTeamName, matchingTeam.teamDesc, decodedProjectName, matchingProject.projectDesc);
         setTeamData(transformedData);
       } else {
-        setError(apiService.getErrorMessage(response));
+        setError(CachedApiService.getErrorMessage(response));
       }
     } catch (err) {
       setError('Failed to fetch team details. Please try again later.');
@@ -198,108 +205,88 @@ export default function TeamDetailPage() {
         id: ticket.id,
         ticketName: ticket.title,
         assignee: ticket.assignee,
-        duedate: ticket.duedate,
-        ticketPriority: ticket.priority,
         ticketStatus: ticket.status,
+        ticketPriority: ticket.priority,
         startdate: ticket.startdate,
-        type: ticket.type as 'jira' | 'sheet',
-        url: ticket.url
+        duedate: ticket.duedate,
+        url: ticket.url,
+        type: ticket.type
       }));
+
+      const requestData = {
+        projectDescription: teamData.projectDescription,
+        teamDescription: teamData.description,
+        tasksTable: tasksTable
+      };
 
       const response = await fetch('/api/summarize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          projectDescription: teamData.projectDescription,
-          teamDescription: teamData.description,
-          tasksTable: tasksTable,
-        }),
+        body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate summary');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      setSummary(data.summary);
+      setSummary(data.summary || 'No summary generated');
+
     } catch (error) {
       console.error('Error generating summary:', error);
-      alert('Failed to generate summary. Please try again.');
+      setSummary('Error generating summary. Please try again.');
     } finally {
       setGeneratingSummary(false);
     }
   };
 
-  useEffect(() => {
-    if (projectName && teamName) {
-      fetchTeamDetails();
-    }
-  }, [projectName, teamName]);
+  const handleRefreshData = () => {
+    fetchTeamData(true);
+  };
 
   const handleAddLink = async () => {
-    if (linkInput.trim() && teamData && teamId && projectId) {
-      try {
-        // Basic URL validation
-        let url: URL;
-        try {
-          url = new URL(linkInput.trim());
-        } catch (urlError) {
-          alert('Please enter a valid URL');
-          return;
-        }
+    if (!linkInput.trim() || !teamId || !projectId || !teamData) return;
 
-        // Additional validation based on task type
-        if (teamData.trackMethod === 'jira') {
-          // Basic validation for Jira URLs (should contain atlassian.net)
-          if (!url.hostname.includes('atlassian.net')) {
-            const proceed = confirm(
-              'This doesn\'t appear to be a Jira URL (should contain atlassian.net). Do you want to add it anyway?'
-            );
-            if (!proceed) return;
-          }
-        } else {
-          // Basic validation for Google Sheets URLs
-          if (!url.hostname.includes('docs.google.com') || !url.pathname.includes('spreadsheets')) {
-            const proceed = confirm(
-              'This doesn\'t appear to be a Google Sheets URL. Do you want to add it anyway?'
-            );
-            if (!proceed) return;
-          }
-        }
+    try {
+      setAddingTask(true);
 
-        setAddingTask(true);
+      const addTaskRequest: AddTaskRequest = {
+        type: teamData.trackMethod,
+        url: linkInput.trim()
+      };
 
-        // Determine task type based on the team's track method
-        const taskType = teamData.trackMethod === 'jira' ? 'jira' : 'sheet';
+      const response = await fetch('/api/task', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(addTaskRequest)
+      });
 
-        // Call the addTask API
-        const response = await apiService.addTask(teamId, projectId, {
-          type: taskType,
-          url: linkInput.trim()
-        });
-
-        if (apiService.isSuccess(response)) {
-          console.log('Task added successfully:', response.data);
-
-          // Refresh the team data to show the new task
-          await fetchTeamDetails();
-        } else {
-          // Handle error case
-          const errorMessage = apiService.getErrorMessage(response);
-          console.error('Failed to add task:', errorMessage);
-          alert(`Failed to add task: ${errorMessage}`);
-        }
-      } catch (error) {
-        console.error('Error adding task:', error);
-        alert('An error occurred while adding the task. Please try again.');
-      } finally {
-        setAddingTask(false);
-        // Reset and close modal
-        setLinkInput('');
-        setShowAddModal(false);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const result: AddTaskResponse = await response.json();
+
+      if (result.taskId) {
+        // Refresh data to show the new task
+        await fetchTeamData(true);
+        alert('Task added successfully!');
+      } else {
+        alert('Failed to add task');
+      }
+
+    } catch (error) {
+      console.error('Error adding task:', error);
+      alert('An error occurred while adding the task. Please try again.');
+    } finally {
+      setAddingTask(false);
+      // Reset and close modal
+      setLinkInput('');
+      setShowAddModal(false);
     }
   };
 
@@ -311,21 +298,23 @@ export default function TeamDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <Link
-              href={`/${projectName}`}
-              className="flex items-center gap-2 hover:underline"
-              style={{ color: '#eb2f96' }}
-            >
-              ← Back to {decodeURIComponent(projectName)}
-            </Link>
-          </div>
-          <div className="flex justify-center items-center py-12">
-            <div className="text-center">
-              <TigerLoader size="lg" className="mx-auto mb-4" />
-              <p className="text-gray-600">Loading team details...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50/30">
+        <Header
+          title="Team Details"
+          subtitle="Loading team information"
+          showBackButton={true}
+          backHref={`/${projectName}`}
+          isRefreshing={true}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full opacity-20 animate-pulse blur-xl"></div>
+              <TigerLoader size="lg" className="relative z-10" />
+            </div>
+            <div className="mt-8 text-center">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Team Details</h3>
+              <p className="text-gray-600">Please wait while we fetch team information...</p>
             </div>
           </div>
         </div>
@@ -336,29 +325,33 @@ export default function TeamDetailPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <Link
-              href={`/${projectName}`}
-              className="flex items-center gap-2 hover:underline"
-              style={{ color: '#eb2f96' }}
-            >
-              ← Back to {decodeURIComponent(projectName)}
-            </Link>
-          </div>
-          <div className="flex justify-center items-center py-12">
-            <div className="text-center">
-              <div className="text-red-500 mb-2">⚠️</div>
-              <p className="text-red-600 font-medium mb-2">Error loading team details</p>
-              <p className="text-gray-600 text-sm">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-100/30">
+        <Header
+          title="Team Not Found"
+          subtitle="Unable to load team details"
+          showBackButton={true}
+          backHref={`/${projectName}`}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-300 to-pink-400 rounded-full opacity-20 blur-xl"></div>
+              <div className="relative w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-500 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center max-w-md">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Team</h3>
+              <p className="text-gray-600 mb-6">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-4 text-white px-4 py-2 rounded transition-colors"
-                style={{ backgroundColor: '#eb2f96' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-pink-400 to-blue-400 hover:from-pink-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
               >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
                 Try Again
               </button>
             </div>
@@ -371,19 +364,23 @@ export default function TeamDetailPage() {
   // No data state
   if (!teamData) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <Link
-              href={`/${projectName}`}
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-            >
-              ← Back to {decodeURIComponent(projectName)}
-            </Link>
-          </div>
-          <div className="flex justify-center items-center py-12">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50/30">
+        <Header
+          title="Team Not Found"
+          subtitle="No team data available"
+          showBackButton={true}
+          backHref={`/${projectName}`}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col items-center justify-center py-20">
             <div className="text-center">
-              <p className="text-gray-600">No team data found</p>
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-300 to-pink-400 rounded-full flex items-center justify-center mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Team Data Found</h3>
+              <p className="text-gray-600">Unable to locate team information</p>
             </div>
           </div>
         </div>
@@ -392,40 +389,42 @@ export default function TeamDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Navigation */}
-        <div className="mb-6">
-          <Link
-            href={`/${projectName}`}
-            className="flex items-center gap-2 hover:underline"
-            style={{ color: '#eb2f96' }}
-          >
-            ← Back to {decodeURIComponent(projectName)}
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50/30">
+      <Header
+        title={teamData.name}
+        showBackButton={true}
+        backHref={`/${projectName}`}
+        onRefresh={handleRefreshData}
+        isRefreshing={loading}
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Team Header */}
+        <div className="mb-8 fade-in">
+          <TeamHeader team={{ ...teamData, tickets: teamData.tickets }} />
         </div>
 
-        {/* Team Header */}
-        <TeamHeader team={{ ...teamData, tickets: teamData.tickets }} />
-
         {/* Generate Summary Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div className="glass-card p-6 mb-8 fade-in-delay-1">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Project Summary</h2>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Project Summary
+              </h2>
+            </div>
             <button
               onClick={generateSummary}
               disabled={generatingSummary}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: '#eb2f96',
-                '--tw-ring-color': '#eb2f96'
-              } as React.CSSProperties}
-              onMouseEnter={(e) => !generatingSummary && (e.currentTarget.style.backgroundColor = '#d61c6a')}
-              onMouseLeave={(e) => !generatingSummary && (e.currentTarget.style.backgroundColor = '#eb2f96')}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generatingSummary ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -433,7 +432,7 @@ export default function TeamDetailPage() {
                 </>
               ) : (
                 <>
-                  <svg className="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   Generate Summary
@@ -443,149 +442,108 @@ export default function TeamDetailPage() {
           </div>
 
           {summary && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Generated Summary</h3>
-              <div className="text-sm text-gray-700 whitespace-pre-wrap">{summary}</div>
+            <div className="mt-4 p-6 bg-gradient-to-r from-gray-50 to-indigo-50/30 rounded-xl border border-gray-200/50">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Generated Summary
+              </h3>
+              <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{summary}</div>
             </div>
           )}
 
           {!summary && !generatingSummary && (
-            <p className="text-gray-500 text-sm">Click "Generate Summary" to create an AI-powered project report based on your current tasks and progress.</p>
+            <div className="text-center py-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <p className="text-gray-600 text-sm">Click "Generate Summary" to create an AI-powered project report based on your current tasks and progress.</p>
+            </div>
           )}
         </div>
 
         {/* Tickets Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="glass-card p-6 fade-in-delay-2">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Tasks & Tickets ({teamData.completedTickets}/{teamData.totalTickets} completed)
-            </h2>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0-6v6m6-2a2 2 0 002-2V7a2 2 0 00-2-2h-2m0 0V3a2 2 0 00-2 2v2m0 0h2m0 0v2" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Tasks & Tickets
+              </h2>
+              <div className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                {teamData.completedTickets}/{teamData.totalTickets} completed
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               {teamData.trackMethod === 'jira' ? (
-                <>
-                  <span className="px-3 py-1 rounded-full text-sm" style={{ backgroundColor: '#f0f9ff', color: '#0369a1' }}>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border border-blue-200">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
                     Jira Tickets
                   </span>
                   <button
                     onClick={() => setShowAddModal(true)}
-                    className="inline-flex items-center px-3 py-1 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{
-                      backgroundColor: '#eb2f96',
-                      '--tw-ring-color': '#eb2f96'
-                    } as React.CSSProperties}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
+                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                   >
-                    <svg
-                      className="-ml-1 mr-1 h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      />
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     Add Ticket
                   </button>
-                </>
+                </div>
               ) : (
-                <>
-                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clipRule="evenodd" />
+                    </svg>
                     Sheet Rows
                   </span>
                   <button
                     onClick={() => setShowAddModal(true)}
-                    className="inline-flex items-center px-3 py-1 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                   >
-                    <svg
-                      className="-ml-1 mr-1 h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      />
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Add Row
+                    Add Sheet
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
 
+          {/* Tickets Grid */}
           <div className="space-y-4">
-            {teamData.trackMethod === 'jira' ? (
-              // For Jira teams: always show tickets (or empty state if none)
-              teamData.tickets.length > 0 ? (
-                teamData.tickets.map((ticket) => (
-                  <TicketCard key={ticket.id} ticket={ticket} />
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="text-gray-500 mb-4">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">
-                    No tickets yet
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Get started by adding your first Jira ticket using the button above.
-                  </p>
+            {teamData.tickets.length > 0 ? (
+              teamData.tickets.map((ticket, index) => (
+                <div key={ticket.id} className={`fade-in-delay-${Math.min(index + 3, 6)}`}>
+                  <TicketCard ticket={ticket} />
                 </div>
-              )
+              ))
             ) : (
-              // For Sheet teams: show tickets if any, otherwise show empty state
-              teamData.tickets.length > 0 ? (
-                teamData.tickets.map((ticket) => (
-                  <TicketCard key={ticket.id} ticket={ticket} />
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="text-gray-500 mb-4">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">
-                    No tasks yet
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Get started by adding your first Google Sheet using the button above.
-                  </p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0-6v6m6-2a2 2 0 002-2V7a2 2 0 00-2-2h-2m0 0V3a2 2 0 00-2 2v2m0 0h2m0 0v2" />
+                  </svg>
                 </div>
-              )
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No {teamData.trackMethod === 'jira' ? 'Jira tickets' : 'Google sheets'} found
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Get started by adding your first {teamData.trackMethod === 'jira' ? 'Jira ticket' : 'Google Sheet'} using the button above.
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -593,25 +551,29 @@ export default function TeamDetailPage() {
 
       {/* Add Link Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
+        <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-cyan-600 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">
                   Add {teamData.trackMethod === 'jira' ? 'Jira Ticket' : 'Google Sheet'} Link
                 </h3>
                 <button
                   onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-white/80 hover:text-white transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
+            </div>
 
-              <div className="mb-4">
-                <label htmlFor="link-input" className="block text-sm font-semibold text-gray-800 mb-2">
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="mb-6">
+                <label htmlFor="link-input" className="block text-sm font-semibold text-gray-900 mb-3">
                   {teamData.trackMethod === 'jira' ? 'Jira Ticket URL' : 'Google Sheet URL'}
                 </label>
                 <input
@@ -623,32 +585,25 @@ export default function TeamDetailPage() {
                     ? 'https://company.atlassian.net/browse/TICKET-123'
                     : 'https://docs.google.com/spreadsheets/d/...'
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:placeholder-gray-400"
-                  style={{ '--tw-ring-color': '#eb2f96', borderColor: '#eb2f96' } as React.CSSProperties}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200"
                 />
               </div>
 
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={handleCloseModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  className="px-6 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAddLink}
                   disabled={!linkInput.trim() || addingTask}
-                  className="px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                  style={{
-                    backgroundColor: '#eb2f96',
-                    '--tw-ring-color': '#eb2f96'
-                  } as React.CSSProperties}
-                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#d61c6a')}
-                  onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = '#eb2f96')}
+                  className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center"
                 >
                   {addingTask ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                       Adding...
                     </>
                   ) : (

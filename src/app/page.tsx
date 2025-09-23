@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import CreateProjectPopup from '../components/CreateProjectPopup';
 import ProjectCard from '../components/ProjectCard';
 import TigerLoader from '../components/TigerLoader';
-import { apiService, type Project, type ApiResponse } from '../service';
-
+import Header from '../components/Header';
+import { type Project, type ApiResponse } from '../service';
+import { CachedApiService } from '../services/cachedApiService';
+import { useTaskStatus } from '../contexts/TaskStatusContext';
 
 export default function HomePage() {
   const [isCreatePopupOpen, setIsCreatePopupOpen] = useState(false);
@@ -13,22 +15,31 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use task status context
+  const {
+    getProjectProgress,
+    loading: taskStatusLoading,
+    error: taskStatusError,
+    lastUpdated,
+    refreshTasks
+  } = useTaskStatus();
+
   // Fetch projects on component mount
   useEffect(() => {
     fetchProjects();
   }, []);
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response: ApiResponse<Project[]> = await apiService.getProjects();
+      const response: ApiResponse<Project[]> = await CachedApiService.getProjects(forceRefresh);
 
-      if (apiService.isSuccess(response)) {
+      if (CachedApiService.isSuccess(response)) {
         setProjects(response.data);
       } else {
-        setError(apiService.getErrorMessage(response));
+        setError(CachedApiService.getErrorMessage(response));
       }
     } catch (err) {
       setError('Failed to fetch projects. Please try again later.');
@@ -39,93 +50,228 @@ export default function HomePage() {
   };
 
   const handleProjectCreated = () => {
-    // Refresh the projects list when a new project is created
-    fetchProjects();
+    // Refresh the projects list when a new project is created (force refresh)
+    fetchProjects(true);
+  };
+
+  const handleRefreshData = async () => {
+    // Refresh both projects and task status
+    await Promise.all([
+      fetchProjects(true),
+      refreshTasks()
+    ]);
+  };
+
+  // Function to get enhanced project data with real progress
+  const getEnhancedProjectData = (project: Project) => {
+    const taskProgress = getProjectProgress(parseInt(project.projectId));
+
+    return {
+      id: project.projectId,
+      name: project.projectName,
+      description: project.projectDesc,
+      status: project.status,
+      teams: project.teamNameList,
+      // Use real progress from tasks if available, otherwise fallback to API progress
+      progress: taskProgress ? taskProgress.progress : project.progress,
+      // Additional data from task analysis
+      taskStats: taskProgress ? {
+        totalTasks: taskProgress.totalTasks,
+        doneTasks: taskProgress.doneTasks,
+        inProgressTasks: taskProgress.inProgressTasks,
+        statusBreakdown: taskProgress.statusBreakdown
+      } : null
+    };
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">BU Project Portal</h1>
-            <p className="text-gray-600 mt-2">Manage and monitor your business unit projects</p>
-          </div>
-          <button
-            onClick={() => setIsCreatePopupOpen(true)}
-            className="text-white px-6 py-3 rounded-lg transition-colors"
-            style={{ backgroundColor: '#eb2f96' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
-          >
-            Create New Project
-          </button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50/30">
+      {/* Modern Header */}
+      <Header
+        onRefresh={handleRefreshData}
+        isRefreshing={loading || taskStatusLoading}
+        lastUpdated={lastUpdated || undefined}
+      >
+        {/* Create Project Button */}
+        <button
+          onClick={() => setIsCreatePopupOpen(true)}
+          className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-pink-400 to-pink-300 hover:from-pink-500 hover:to-pink-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 group"
+        >
+          <svg className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span className="hidden sm:inline">Create New Project</span>
+          <span className="sm:hidden">Create</span>
+        </button>
+      </Header>
 
-        {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loading ? (
-            // Loading state
-            <div className="col-span-full flex justify-center items-center py-12">
-              <div className="text-center">
-                <TigerLoader size="lg" className="mx-auto mb-4" />
-                <p className="text-gray-600">Loading projects...</p>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          // Loading state with modern design
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-300 to-pink-400 rounded-full opacity-20 animate-pulse blur-xl"></div>
+              <TigerLoader size="lg" className="relative z-10" />
+            </div>
+            <div className="mt-8 text-center">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Projects</h3>
+              <p className="text-gray-600">Please wait while we fetch your project data...</p>
+            </div>
+          </div>
+        ) : taskStatusLoading ? (
+          // Task status loading state with modern design
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-200 to-blue-300 rounded-full opacity-20 animate-pulse blur-xl"></div>
+              <TigerLoader size="lg" className="relative z-10" />
+            </div>
+            <div className="mt-8 text-center">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Calculating Progress</h3>
+              <p className="text-gray-600">Projects loaded, analyzing task progress...</p>
+              <div className="mt-4 flex justify-center">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
               </div>
             </div>
-          ) : error ? (
-            // Error state
-            <div className="col-span-full flex justify-center items-center py-12">
-              <div className="text-center">
-                <div className="text-red-500 mb-2">⚠️</div>
-                <p className="text-red-600 font-medium mb-2">Error loading projects</p>
-                <p className="text-gray-600 text-sm">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-4 text-white px-4 py-2 rounded transition-colors"
-                  style={{ backgroundColor: '#eb2f96' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
-                >
-                  Try Again
-                </button>
+          </div>
+        ) : error ? (
+          // Error state with modern design
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-400 to-pink-400 rounded-full opacity-20 blur-xl"></div>
+              <div className="relative w-16 h-16 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
               </div>
             </div>
-          ) : projects.length === 0 ? (
-            // Empty state
-            <div className="col-span-full flex justify-center items-center py-12">
-              <div className="text-center">
-                <div className="text-gray-400 mb-2">📁</div>
-                <p className="text-gray-600 font-medium mb-2">No projects found</p>
-                <p className="text-gray-500 text-sm mb-4">Get started by creating your first project</p>
-                <button
-                  onClick={() => setIsCreatePopupOpen(true)}
-                  className="text-white px-4 py-2 rounded transition-colors"
-                  style={{ backgroundColor: '#eb2f96' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d61c6a'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eb2f96'}
-                >
-                  Create Project
-                </button>
+            <div className="text-center max-w-md">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Projects</h3>
+              <p className="text-gray-600 mb-6">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-pink-400 to-pink-300 hover:from-pink-500 hover:to-pink-400 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : taskStatusError ? (
+          // Task status error state with modern design
+          <div>
+            <div className="mb-8 bg-gradient-to-r from-pink-50 to-pink-100 border border-pink-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-pink-300 to-pink-400 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-yellow-900 mb-1">Progress Calculation Unavailable</h3>
+                  <p className="text-yellow-800 mb-2">Unable to load task statuses: {taskStatusError}</p>
+                  <p className="text-yellow-700 text-sm">Showing projects with basic information only.</p>
+                </div>
               </div>
             </div>
-          ) : (
-            // Projects list
-            projects.map((project) => (
-              <ProjectCard
-                key={project.projectId}
-                project={{
-                  id: project.projectId,
-                  name: project.projectName,
-                  description: project.projectDesc,
-                  status: project.status,
-                  teams: project.teamNameList,
-                  progress: project.progress
-                }}
-              />
-            ))
-          )}
-        </div>
+
+            {/* Projects Grid with fallback data */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project, index) => (
+                <div key={project.projectId} style={{ animationDelay: `${index * 100}ms` }}>
+                  <ProjectCard
+                    project={{
+                      id: project.projectId,
+                      name: project.projectName,
+                      description: project.projectDesc,
+                      status: project.status,
+                      teams: project.teamNameList,
+                      progress: project.progress
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : projects.length === 0 ? (
+          // Empty state with modern design
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-400 to-slate-400 rounded-full opacity-10 blur-xl"></div>
+              <div className="relative w-20 h-20 bg-gradient-to-br from-gray-100 to-slate-100 rounded-full flex items-center justify-center border border-gray-200">
+                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center max-w-md">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No Projects Yet</h3>
+              <p className="text-gray-600 mb-6">Get started by creating your first project and begin managing your team's work efficiently.</p>
+              <button
+                onClick={() => setIsCreatePopupOpen(true)}
+                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-pink-400 to-blue-400 hover:from-pink-500 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 group"
+              >
+                <svg className="w-6 h-6 mr-3 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Create Your First Project
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Projects grid with enhanced data
+          <div>
+            {/* Stats Summary */}
+            <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="text-2xl font-bold text-indigo-600">{projects.length}</div>
+                <div className="text-sm text-gray-600">Total Projects</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="text-2xl font-bold text-green-600">
+                  {projects.filter(p => p.status === 'Completed').length}
+                </div>
+                <div className="text-sm text-gray-600">Completed</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="text-2xl font-bold text-blue-600">
+                  {projects.filter(p => p.status === 'In Progress').length}
+                </div>
+                <div className="text-sm text-gray-600">In Progress</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {projects.filter(p => p.status === 'Planning').length}
+                </div>
+                <div className="text-sm text-gray-600">Planning</div>
+              </div>
+            </div>
+
+            {/* Projects Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project, index) => (
+                <div key={project.projectId} style={{ animationDelay: `${index * 100}ms` }}>
+                  <ProjectCard project={getEnhancedProjectData(project)} />
+                </div>
+              ))}
+            </div>
+
+            {/* Last Updated Info */}
+            {lastUpdated && (
+              <div className="mt-8 text-center">
+                <p className="text-sm text-gray-500">
+                  Progress data last updated: {lastUpdated.toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Create Project Popup */}
         {isCreatePopupOpen && (
