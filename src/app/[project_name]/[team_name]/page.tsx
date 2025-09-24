@@ -134,6 +134,7 @@ export default function TeamDetailPage() {
   }>>([]);
   const [chatInput, setChatInput] = useState<string>('');
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
   // Comments state
   const [comments, setComments] = useState<Comment[]>([]);
@@ -147,6 +148,15 @@ export default function TeamDetailPage() {
       fetchTeamData();
     }
   }, [projectName, teamName]);
+
+  // Initialize chat session ID when team data is loaded
+  useEffect(() => {
+    if (teamData && !chatSessionId) {
+      // Generate a unique session ID based on project and team
+      const sessionId = `${teamData.projectName}-${teamData.name}-${Date.now()}`;
+      setChatSessionId(sessionId);
+    }
+  }, [teamData, chatSessionId]);
 
   // Fetch comments when projectId and teamId become available
   useEffect(() => {
@@ -328,7 +338,7 @@ export default function TeamDetailPage() {
   };
 
   const handleChatSubmit = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
+    if (!chatInput.trim() || isChatLoading || !teamData || !chatSessionId) return;
 
     const userMessage = {
       id: Date.now().toString(),
@@ -339,21 +349,86 @@ export default function TeamDetailPage() {
 
     // Add user message to chat
     setChatMessages(prev => [...prev, userMessage]);
+    const currentMessage = chatInput.trim();
     setChatInput('');
     setIsChatLoading(true);
 
-    // Simulate API delay
-    setTimeout(() => {
+    try {
+      // Prepare the request payload
+      const isFirstMessage = chatMessages.length === 0;
+      
+      let requestPayload: any = {
+        sessionId: chatSessionId,
+        message: currentMessage
+      };
+
+      // For the first message, include full context
+      if (isFirstMessage) {
+        // Transform team data into the format expected by the API (same as summary)
+        const tasksTable = teamData.tickets.map(ticket => ({
+          id: ticket.id,
+          ticketName: ticket.title,
+          ticketDescription: ticket.ticketDescription,
+          ticketStatus: ticket.status,
+          ticketPriority: ticket.priority,
+          assignee: ticket.assignee,
+          startdate: ticket.startdate,
+          duedate: ticket.duedate,
+          url: ticket.url,
+          type: ticket.type
+        }));
+
+        requestPayload = {
+          ...requestPayload,
+          projectDescription: teamData.projectDescription,
+          teamDescription: teamData.description,
+          tasksTable: tasksTable
+        };
+      }
+
+      console.log('Chat request payload:', requestPayload);
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       const botResponse = {
         id: (Date.now() + 1).toString(),
-        message: "đợi em xí , em đang kẹt",
+        message: data.reply || 'No response received',
         isUser: false,
         timestamp: new Date()
       };
 
       setChatMessages(prev => [...prev, botResponse]);
+
+    } catch (error) {
+      console.error('Error in chat:', error);
+      
+      const errorResponse = {
+        id: (Date.now() + 1).toString(),
+        message: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        isUser: false,
+        timestamp: new Date()
+      };
+
+      setChatMessages(prev => [...prev, errorResponse]);
+    } finally {
       setIsChatLoading(false);
-    }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
+    }
   };
 
   const handleChatKeyPress = (e: React.KeyboardEvent) => {
@@ -610,28 +685,58 @@ export default function TeamDetailPage() {
 
             {/* Chat Box Section - 1/3 width */}
             <div className="w-1/3">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
+                <div className="flex items-center gap-3 mb-4">
+                <div className="relative">
+                  <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                  </div>
+                  {chatSessionId && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+                  )}
                 </div>
-                <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Ask Ngũ Hổ Tướng
-                </h2>
-              </div>
-
-              <div className="bg-gradient-to-r from-orange-50 to-red-50/30 rounded-xl border border-orange-200/50 p-4 h-80 flex flex-col">
+                <div>
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                    AI Project Assistant
+                  </h2>
+                  {chatSessionId && (
+                    <div className="text-xs text-green-600 font-medium">
+                      ● Connected
+                    </div>
+                  )}
+                </div>
+              </div>              <div className="bg-gradient-to-r from-orange-50 to-red-50/30 rounded-xl border border-orange-200/50 p-4 h-80 flex flex-col">
                 {/* Chat Messages Area */}
                 <div className="flex-1 overflow-y-auto mb-4 space-y-3">
                   {chatMessages.length === 0 ? (
-                    <div className="text-center py-8">
+                    <div className="text-center py-6">
                       <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
                         <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2v-6a2 2 0 012-2h2m-4-3v3m0 0v3m0-3h3m-3 0H6m6-3v3m0 0v3m0-3h3m-3 0h-3" />
                         </svg>
                       </div>
-                      <p className="text-gray-600 text-sm">Start a conversation with our AI assistant to get help with your project.</p>
+                      <p className="text-gray-600 text-xs mb-3">Ask questions about your project:</p>
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => setChatInput("What tasks are overdue or need attention?")}
+                          className="block w-full text-left px-2 py-1 text-xs text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                        >
+                          • What tasks need attention?
+                        </button>
+                        <button
+                          onClick={() => setChatInput("How is our team performing overall?")}
+                          className="block w-full text-left px-2 py-1 text-xs text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                        >
+                          • How is our team performing?
+                        </button>
+                        <button
+                          onClick={() => setChatInput("What should we focus on next?")}
+                          className="block w-full text-left px-2 py-1 text-xs text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                        >
+                          • What should we focus on next?
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <>
@@ -641,7 +746,22 @@ export default function TeamDetailPage() {
                             ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
                             : 'bg-white border border-orange-200 text-gray-800'
                             }`}>
-                            <p>{msg.message}</p>
+                            {msg.isUser ? (
+                              <p>{msg.message}</p>
+                            ) : (
+                              <div 
+                                className="prose prose-xs max-w-none"
+                                dangerouslySetInnerHTML={{ 
+                                  __html: msg.message
+                                    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                                    .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                                    .replace(/^\- (.*$)/gm, '<li class="ml-2 list-disc list-inside">$1</li>')
+                                    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-800 px-1 rounded text-xs">$1</code>')
+                                    .replace(/\n\n/g, '<br><br>')
+                                    .replace(/\n/g, '<br>')
+                                }} 
+                              />
+                            )}
                             <p className={`text-xs mt-1 ${msg.isUser ? 'text-orange-100' : 'text-gray-500'}`}>
                               {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
@@ -671,7 +791,7 @@ export default function TeamDetailPage() {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={handleChatKeyPress}
                     disabled={isChatLoading}
-                    placeholder="Ask about your project..."
+                    placeholder={chatMessages.length === 0 ? "Ask about your project tasks, deadlines, or team progress..." : "Continue the conversation..."}
                     className="flex-1 px-3 py-2 border border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <button

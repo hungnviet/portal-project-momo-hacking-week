@@ -339,7 +339,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">PO Domain *</label>
                           <input
-                            type="email"
+                            type="text"
                             placeholder="po@domain.com"
                             value={team.PODomain}
                             onChange={(e) => updateTeam(team.id, 'PODomain', e.target.value)}
