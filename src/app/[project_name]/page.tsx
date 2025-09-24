@@ -91,22 +91,65 @@ export default function ProjectDetailPage() {
     ]);
   };
 
+  // Helper function to calculate project status based on task completion and dates
+  const calculateProjectStatus = (projectId: number, startDate: string, dueDate: string): { status: string; color: string } => {
+    const today = new Date();
+    const start = new Date(startDate);
+    const due = new Date(dueDate);
+    
+    // Set time to start of day for accurate comparison
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+
+    // Get project progress from task status context
+    const projectProgress = getProjectProgress(projectId);
+    
+    // If all tasks are done (using actual task data)
+    if (projectProgress && projectProgress.totalTasks > 0) {
+      if (projectProgress.doneTasks === projectProgress.totalTasks) {
+        return {
+          status: 'Completed',
+          color: 'bg-gradient-to-r from-green-400 to-green-500'
+        };
+      }
+    }
+
+    // If current date is past due date and not all tasks are done
+    if (today > due) {
+      return {
+        status: 'Overdue',
+        color: 'bg-gradient-to-r from-red-400 to-red-500'
+      };
+    }
+
+    // If project hasn't started yet
+    if (today < start) {
+      return {
+        status: 'Planning',
+        color: 'bg-gradient-to-r from-gray-400 to-gray-500'
+      };
+    }
+
+    // If project is in progress
+    return {
+      status: 'In Progress',
+      color: 'bg-gradient-to-r from-blue-400 to-blue-500'
+    };
+  };
+
   // Helper function to get enhanced team data with real progress
-  const getEnhancedTeamData = (team: any, projectId: number) => {
+  const getEnhancedTeamData = (team: { teamId: number; teamName: string; teamDesc: string; teamPODomain: string }, projectId: number) => {
     const teamProgress = getTeamProgress(projectId, team.teamId);
     const teamTasks = getTasksByTeam(projectId, team.teamId);
 
     return {
       id: team.teamId.toString(),
       name: team.teamName,
-      progress: teamProgress ? teamProgress.progress : team.teamProgress,
+      progress: teamProgress ? teamProgress.progress : 0,
       ticketCount: teamTasks.length,
       completedTickets: teamProgress ? teamProgress.doneTasks : 0,
-      status: teamProgress ?
-        (teamProgress.progress >= 80 ? 'Ahead of Schedule' :
-          teamProgress.progress >= 60 ? 'On Track' : 'Behind Schedule') :
-        (team.teamProgress >= 80 ? 'Ahead of Schedule' :
-          team.teamProgress >= 60 ? 'On Track' : 'Behind Schedule'),
+      projectId: projectId, // Add projectId for task retrieval
       // Additional task status data
       taskStats: teamProgress ? {
         totalTasks: teamProgress.totalTasks,
@@ -220,7 +263,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50/30">
       <Header
-        title={project.projectName}
+        title="Project Details"
         showBackButton={true}
         backHref="/"
         onRefresh={handleRefreshData}
@@ -235,12 +278,57 @@ export default function ProjectDetailPage() {
             <div className="flex-1">
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-pink-400 to-blue-400 text-white">
-                    {project.status}
+                  {(() => {
+                    const projectStatus = calculateProjectStatus(
+                      parseInt(project.projectId.toString()),
+                      project.startDate, 
+                      project.dueDate
+                    );
+                    return (
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white shadow-md ${projectStatus.color}`}>
+                          {projectStatus.status === 'Overdue' && (
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                          )}
+                          {projectStatus.status === 'Completed' && (
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
+                          {projectStatus.status}
+                        </span>
+                        {projectStatus.status === 'Overdue' && (
+                          <span className="text-red-600 text-xs font-medium animate-pulse">
+                            ⚠ Past Due Date
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <span className="text-2xl font-bold text-gray-900">
+                    {project.projectName}
                   </span>
-                  <span className="text-sm text-gray-500">ID: {project.projectId}</span>
                 </div>
-                <p className="text-sm text-gray-500">{project.projectDesc}</p>
+                
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-500">{project.projectDesc}</p>
+                  <div className="flex items-center gap-4 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Start: {new Date(project.startDate).toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Due: {new Date(project.dueDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
               </div>
               {taskStatusError && (
                 <div className="mb-4 p-4 bg-gradient-to-r from-pink-50 to-pink-100 border border-pink-200 rounded-xl">

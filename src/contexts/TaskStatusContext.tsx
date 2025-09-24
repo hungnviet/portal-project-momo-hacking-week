@@ -10,6 +10,11 @@ export interface TaskStatus {
     url: string;
     status: string;
     type: number;
+    title?: string;
+    assignee?: string;
+    duedate?: string;
+    startdate?: string;
+    updated?: string;
 }export interface ProjectProgress {
     projectId: number;
     totalTasks: number;
@@ -46,6 +51,7 @@ interface TaskStatusContextType {
     getTeamProgress: (projectId: number, teamId: number) => TeamProgress | null;
     getTasksByProject: (projectId: number) => TaskStatus[];
     getTasksByTeam: (projectId: number, teamId: number) => TaskStatus[];
+    getNotDoneTasksByTeam: (projectId: number, teamId: number) => TaskStatus[];
 
     // Refresh and cache functions
     refreshTasks: () => Promise<void>;
@@ -213,6 +219,17 @@ export function TaskStatusProvider({ children }: TaskStatusProviderProps) {
         return tasks.filter(task => task.projectId === projectId && task.teamId === teamId);
     };
 
+    // Helper function to get not-done tasks by team
+    const getNotDoneTasksByTeam = (projectId: number, teamId: number): TaskStatus[] => {
+        return tasks.filter(task => 
+            task.projectId === projectId && 
+            task.teamId === teamId &&
+            !(task.status.toLowerCase() === 'done' ||
+              task.status.toLowerCase() === 'completed' ||
+              task.status.toLowerCase() === 'closed')
+        );
+    };
+
     // Refresh function
     const refreshTasks = async () => {
         await fetchTasks(true); // Force refresh
@@ -233,6 +250,7 @@ export function TaskStatusProvider({ children }: TaskStatusProviderProps) {
         getTeamProgress,
         getTasksByProject,
         getTasksByTeam,
+        getNotDoneTasksByTeam,
         refreshTasks,
         clearCache
     };

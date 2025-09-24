@@ -155,16 +155,6 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Get project comments
-    const { data: comments, error: commentsError } = await supabase
-      .from('Comment')
-      .select('*')
-      .eq('projectid', projectId)
-      .order('created_at', { ascending: false });
-
-    if (commentsError) {
-      console.error('Error fetching comments:', commentsError);
-    }
 
     // Get teams for this project
     const { data: teamProjects, error: teamsError } = await supabase
@@ -199,35 +189,18 @@ export async function GET(request: NextRequest) {
           console.error('Error fetching team tasks:', tasksError);
         }
 
-        // Calculate progress (simplified - would need to fetch actual task data)
-        const teamProgress = tasks && tasks.length > 0 ?
-          Math.min(Math.round(Math.random() * 100), 100) : 0;
+
 
         return {
           teamId: tp.Team.id,
           teamName: tp.Team.name,
           teamDesc: tp.description,
-          teamProgress,
           teamPODomain: tp.Team.assignee
         };
       })
     );
 
-    // Calculate overall progress
-    const overallProgress = teamList.length > 0 ?
-      Math.round(teamList.reduce((sum, team) => sum + team.teamProgress, 0) / teamList.length) : 0;
 
-    // Determine status
-    const currentDate = new Date();
-    const startDate = new Date(project.start_date);
-    const endDate = new Date(project.end_date);
-
-    let status = 'Planning';
-    if (currentDate >= startDate && currentDate <= endDate) {
-      status = overallProgress === 100 ? 'Completed' : 'In Progress';
-    } else if (currentDate > endDate) {
-      status = overallProgress === 100 ? 'Completed' : 'Overdue';
-    }
 
     return NextResponse.json({
       status: 'success',
@@ -237,9 +210,8 @@ export async function GET(request: NextRequest) {
         projectId: project.id,
         projectName: project.name,
         projectDesc: project.description,
-        status,
-        progress: overallProgress,
-        comments: comments || [],
+        startDate: project.start_date,
+        dueDate: project.end_date,
         teamList
       }
     });

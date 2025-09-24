@@ -10,6 +10,8 @@ interface Project {
     projectId: string;
     projectName: string;
     projectDesc: string;
+    startDate: string;
+    dueDate: string;
     status: 'Planning' | 'In Progress' | 'Completed' | 'Overdue';
     progress: number;
     teamNameList: string[];
@@ -107,6 +109,8 @@ interface ProjectDetails {
     projectDesc: string;
     status: 'Planning' | 'In Progress' | 'Completed' | 'Overdue';
     progress: number;
+    startDate: string;
+    dueDate: string;
     comments: Comment[];
     teamList: TeamDetails[];
 }

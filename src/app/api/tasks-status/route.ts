@@ -18,6 +18,34 @@ interface TaskStatusResponse {
     url: string;
     status: string;
     type: number;
+    title?: string;
+    assignee?: string;
+    duedate?: string;
+    startdate?: string;
+    updated?: string;
+}
+
+// Helper function to format date strings to YYYY-MM-DD format
+function formatDateToDateOnly(dateString: string | undefined): string | undefined {
+    if (!dateString) return undefined;
+    
+    try {
+        // Handle ISO date strings and other common formats
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            // If it's not a valid date, check if it's already in YYYY-MM-DD format
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                return dateString;
+            }
+            return undefined;
+        }
+        
+        // Format to YYYY-MM-DD
+        return date.toISOString().split('T')[0];
+    } catch (error) {
+        console.warn(`Error formatting date: ${dateString}`, error);
+        return undefined;
+    }
 }
 
 export async function GET() {
@@ -74,7 +102,12 @@ export async function GET() {
                         teamId: task.teamId,
                         url: task.url,
                         status: jiraData?.ticketStatus || 'Unknown',
-                        type: task.type
+                        type: task.type,
+                        title: jiraData?.ticketName,
+                        assignee: jiraData?.assignee,
+                        duedate: formatDateToDateOnly(jiraData?.duedate),
+                        startdate: formatDateToDateOnly(jiraData?.startdate),
+                        updated: formatDateToDateOnly(jiraData?.updated)
                     });
                 });
             } catch (jiraError) {
@@ -87,7 +120,12 @@ export async function GET() {
                         teamId: task.teamId,
                         url: task.url,
                         status: 'Error fetching status',
-                        type: task.type
+                        type: task.type,
+                        title: undefined,
+                        assignee: undefined,
+                        duedate: undefined,
+                        startdate: undefined,
+                        updated: undefined
                     });
                 });
             }
@@ -104,30 +142,38 @@ export async function GET() {
                 sheetTasks.forEach(task => {
                     const sheetData = sheetRowsData.find(row => row.url === task.url);
 
-                    // Try to find status field (common field names for status)
-                    let status = 'Unknown';
-                    if (sheetData) {
-                        // Check common status field names (case-insensitive)
-                        const statusFields = ['status', 'Status', 'STATUS', 'state', 'State', 'progress', 'Progress', 'ticketStatus'];
-                        for (const fieldName of statusFields) {
+                    // Helper function to find field value
+                    const findFieldValue = (fieldNames: string[]): string | undefined => {
+                        if (!sheetData) return undefined;
+                        
+                        // Check main fields first
+                        for (const fieldName of fieldNames) {
                             if (sheetData[fieldName]) {
-                                status = String(sheetData[fieldName]);
-                                break;
+                                return String(sheetData[fieldName]);
                             }
                         }
 
-                        // If not found in main fields, check extra object
-                        if (status === 'Unknown' && sheetData.extra && typeof sheetData.extra === 'object') {
+                        // Check extra object
+                        if (sheetData.extra && typeof sheetData.extra === 'object') {
                             const extraObj = sheetData.extra as { [key: string]: string };
-                            for (const fieldName of statusFields) {
+                            for (const fieldName of fieldNames) {
                                 const lowerFieldName = fieldName.toLowerCase();
                                 if (extraObj[lowerFieldName]) {
-                                    status = extraObj[lowerFieldName];
-                                    break;
+                                    return extraObj[lowerFieldName];
                                 }
                             }
                         }
-                    }
+                        
+                        return undefined;
+                    };
+
+                    // Try to find various fields
+                    const status = findFieldValue(['status', 'Status', 'STATUS', 'state', 'State', 'progress', 'Progress', 'ticketStatus']) || 'Unknown';
+                    const title = findFieldValue(['title', 'Title', 'TITLE', 'summary', 'Summary', 'name', 'Name', 'task', 'Task', 'ticketName']);
+                    const assignee = findFieldValue(['assignee', 'Assignee', 'ASSIGNEE', 'assigned', 'Assigned', 'owner', 'Owner', 'responsible']);
+                    const duedate = findFieldValue(['duedate', 'Duedate', 'DueDate', 'due_date', 'due', 'Due', 'deadline', 'Deadline']);
+                    const startdate = findFieldValue(['startdate', 'Startdate', 'StartDate', 'start_date', 'start', 'Start', 'created', 'Created']);
+                    const updated = findFieldValue(['updated', 'Updated', 'UPDATED', 'modified', 'Modified', 'last_updated', 'lastUpdated']);
 
                     taskStatusResults.push({
                         taskId: task.taskId,
@@ -135,7 +181,12 @@ export async function GET() {
                         teamId: task.teamId,
                         url: task.url,
                         status: status,
-                        type: task.type
+                        type: task.type,
+                        title: title,
+                        assignee: assignee,
+                        duedate: formatDateToDateOnly(duedate),
+                        startdate: formatDateToDateOnly(startdate),
+                        updated: formatDateToDateOnly(updated)
                     });
                 });
             } catch (sheetError) {
@@ -148,7 +199,12 @@ export async function GET() {
                         teamId: task.teamId,
                         url: task.url,
                         status: 'Error fetching status',
-                        type: task.type
+                        type: task.type,
+                        title: undefined,
+                        assignee: undefined,
+                        duedate: undefined,
+                        startdate: undefined,
+                        updated: undefined
                     });
                 });
             }

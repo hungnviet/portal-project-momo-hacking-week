@@ -56,37 +56,12 @@ export async function GET(request: NextRequest) {
           })
           : [];
 
-        // Get tasks for this project to calculate progress
-        const { data: tasks, error: tasksError } = await supabase
-          .from('Task')
-          .select('taskId, url')
-          .eq('projectId', project.id);
-
-        if (tasksError) {
-          console.error('Error fetching tasks for project:', project.id, tasksError);
-        }
-
-        // Calculate progress (simplified - in real implementation, you'd fetch actual task statuses)
-        const progress = tasks ? Math.min(Math.round(Math.random() * 100), 100) : 0;
-
-        // Determine status based on dates and progress
-        const currentDate = new Date();
-        const startDate = new Date(project.start_date);
-        const endDate = new Date(project.end_date);
-
-        let status = 'Planning';
-        if (currentDate >= startDate && currentDate <= endDate) {
-          status = progress === 100 ? 'Completed' : 'In Progress';
-        } else if (currentDate > endDate) {
-          status = progress === 100 ? 'Completed' : 'Overdue';
-        }
-
         return {
           projectId: project.id,
           projectName: project.name,
           projectDesc: project.description,
-          status,
-          progress,
+          startDate: project.start_date,
+          dueDate: project.end_date,
           teamNameList
         };
       })

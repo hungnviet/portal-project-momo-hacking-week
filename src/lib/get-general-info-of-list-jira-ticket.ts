@@ -117,6 +117,8 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
         'project',
         'issuetype',
         'startdate',
+        'started',
+        'workStarted',
         'duedate',
         'updated'
       ].join(',')
@@ -155,7 +157,7 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
       ticketStatus: rawData.fields.status?.name || 'Unknown',
       ticketPriority: rawData.fields.priority?.name || 'None',
       assignee: rawData.fields.assignee?.displayName,
-      startdate: rawData.fields.startdate || '',
+      startdate: rawData.fields.startdate || rawData.fields.started || '',
       duedate: rawData.fields.duedate || '',
       updated: rawData.fields.updated || '',
       projectName: rawData.fields.project?.name || 'Unknown Project',

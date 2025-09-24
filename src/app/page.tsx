@@ -64,40 +64,63 @@ export default function HomePage() {
     ]);
   };
 
-  // Function to get enhanced project data with real progress
+  // Function to calculate project status based on task completion and due date
+  const calculateProjectStatus = (project: Project, taskProgress: any) => {
+    const currentDate = new Date();
+    const dueDate = new Date(project.dueDate);
+    
+    // Check if project has tasks
+    const hasTasks = taskProgress && taskProgress.totalTasks > 0;
+    
+    if (!hasTasks) {
+      // No tasks = Planning phase
+      return 'Planning';
+    }
+    
+    // Check if all tasks are done
+    if (taskProgress.doneTasks === taskProgress.totalTasks) {
+      return 'Completed';
+    }
+    
+    // Check if current date is past due date
+    if (currentDate > dueDate) {
+      return 'Overdue';
+    }
+    
+    // Otherwise, it's in progress
+    return 'In Progress';
+  };
+
+  // Function to get enhanced project data with real progress and calculated status
   const getEnhancedProjectData = (project: Project) => {
     const taskProgress = getProjectProgress(parseInt(project.projectId));
 
-    // Determine if project has tasks
-    const hasTasks = taskProgress && taskProgress.totalTasks > 0;
-
-    // If no tasks, it's in planning phase
-    const effectiveStatus = !hasTasks ? 'Planning' : project.status;
+    // Calculate the actual status based on tasks and dates
+    const calculatedStatus = calculateProjectStatus(project, taskProgress);
 
     // Calculate progress based on tasks only
     let effectiveProgress = 0;
-    if (hasTasks && taskProgress) {
+    if (taskProgress && taskProgress.totalTasks > 0) {
       // Progress is calculated as (done tasks / total tasks) * 100
-      effectiveProgress = taskProgress.totalTasks > 0
-        ? Math.round((taskProgress.doneTasks / taskProgress.totalTasks) * 100)
-        : 0;
+      effectiveProgress = Math.round((taskProgress.doneTasks / taskProgress.totalTasks) * 100);
     }
-    // If no tasks, progress should be 0% regardless of API progress
 
     return {
       id: project.projectId,
       name: project.projectName,
       description: project.projectDesc,
-      status: effectiveStatus,
+      status: calculatedStatus,
       teams: project.teamNameList,
       progress: effectiveProgress,
+      startDate: project.startDate,
+      dueDate: project.dueDate,
       // Additional data from task analysis
       taskStats: taskProgress ? {
         totalTasks: taskProgress.totalTasks,
         doneTasks: taskProgress.doneTasks,
         inProgressTasks: taskProgress.inProgressTasks,
         statusBreakdown: taskProgress.statusBreakdown,
-        hasTasks: !!hasTasks
+        hasTasks: taskProgress.totalTasks > 0
       } : {
         totalTasks: 0,
         doneTasks: 0,
@@ -264,7 +287,7 @@ export default function HomePage() {
           // Projects grid with enhanced data
           <div>
             {/* Stats Summary */}
-            <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mb-8 grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="text-2xl font-bold text-indigo-600">{projects.length}</div>
                 <div className="text-sm text-gray-600">Total Projects</div>
@@ -286,6 +309,15 @@ export default function HomePage() {
                   }).length}
                 </div>
                 <div className="text-sm text-gray-600">In Progress</div>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="text-2xl font-bold text-red-600">
+                  {projects.filter(p => {
+                    const enhanced = getEnhancedProjectData(p);
+                    return enhanced.status === 'Overdue';
+                  }).length}
+                </div>
+                <div className="text-sm text-gray-600">Overdue</div>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                 <div className="text-2xl font-bold text-yellow-600">
