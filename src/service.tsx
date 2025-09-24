@@ -40,6 +40,7 @@ interface CreateProjectResponse {
 interface Comment {
     id: number;
     projectid: number;
+    teamid: number;
     comment: string;
     created_at: string;
 }
@@ -52,6 +53,7 @@ interface AddCommentRequest {
 interface AddCommentResponse {
     commentId: number;
     projectId: number;
+    teamId: number;
     content: string;
     createdAt: string;
 }
@@ -194,26 +196,29 @@ class ApiService {
     }
 
     /**
-     * Fetch comments for a specific project
+     * Fetch comments for a specific project and team
      * @param projectId The ID of the project to get comments for
+     * @param teamId The ID of the team to get comments for
      * @returns Promise containing comments array or error
      */
-    async getComments(projectId: string | number): Promise<ApiResponse<Comment[]>> {
-        const endpoint = `/comment?projectId=${encodeURIComponent(projectId)}`;
+    async getComments(projectId: string | number, teamId: string | number): Promise<ApiResponse<Comment[]>> {
+        const endpoint = `/comment?projectId=${encodeURIComponent(projectId)}&teamId=${encodeURIComponent(teamId)}`;
         return this.makeRequest<Comment[]>(endpoint);
     }
 
     /**
-     * Add a new comment to a project
+     * Add a new comment to a project and team
      * @param projectId The ID of the project to add comment to
+     * @param teamId The ID of the team to add comment to
      * @param commentData Comment data including content
      * @returns Promise containing created comment data or error
      */
     async addComment(
         projectId: string | number,
+        teamId: string | number,
         commentData: AddCommentRequest
     ): Promise<ApiResponse<AddCommentResponse>> {
-        const endpoint = `/comment?projectId=${encodeURIComponent(projectId)}`;
+        const endpoint = `/comment?projectId=${encodeURIComponent(projectId)}&teamId=${encodeURIComponent(teamId)}`;
         return this.makeRequest<AddCommentResponse>(endpoint, {
             method: 'POST',
             body: JSON.stringify(commentData)

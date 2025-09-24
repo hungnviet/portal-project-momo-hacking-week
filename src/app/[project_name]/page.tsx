@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ProjectProgress from '../../components/ProjectProgress';
 import TeamSection from '../../components/TeamSection';
-import ProjectComments from '../../components/ProjectComments';
 import TigerLoader from '../../components/TigerLoader';
 import Header from '../../components/Header';
 import { ProjectDetails, ApiResponse, Project } from '../../service';
@@ -284,51 +283,27 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        {/* Teams and Comments Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Teams Section */}
-          <div className="xl:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-pink-300 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Contributing Teams
-              </h2>
-              <div className="flex-1 h-px bg-gradient-to-r from-pink-200 to-transparent"></div>
+        {/* Teams Section */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-pink-300 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
             </div>
-            <div className="space-y-6">
-              {project.teamList.map((team, index) => (
-                <div key={team.teamId} className={`fade-in-delay-${index + 1}`}>
-                  <TeamSection
-                    team={getEnhancedTeamData(team, parseInt(project.projectId.toString()))}
-                    projectName={projectName}
-                  />
-                </div>
-              ))}
-            </div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Contributing Teams
+            </h2>
+            <div className="flex-1 h-px bg-gradient-to-r from-pink-200 to-transparent"></div>
           </div>
-
-          {/* Comments Section */}
-          <div className="xl:col-span-1">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-pink-400 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Comments
-              </h2>
-            </div>
-            <div className="fade-in-delay-2">
-              <ProjectComments
-                projectId={project.projectId.toString()}
+          {project.teamList.map((team, index) => (
+            <div key={team.teamId} className={`fade-in-delay-${index + 1}`}>
+              <TeamSection
+                team={getEnhancedTeamData(team, parseInt(project.projectId.toString()))}
+                projectName={projectName}
               />
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

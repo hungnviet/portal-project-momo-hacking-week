@@ -7,8 +7,9 @@ import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
 import TigerLoader from '../../../components/TigerLoader';
 import Header from '../../../components/Header';
-import { type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse } from '../../../service';
+import { type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse, type Comment, type AddCommentRequest } from '../../../service';
 import { CachedApiService } from '../../../services/cachedApiService';
+import { apiService } from '../../../service';
 
 // Interface for the component's team data structure
 interface TeamData {
@@ -132,11 +133,25 @@ export default function TeamDetailPage() {
   const [chatInput, setChatInput] = useState<string>('');
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
 
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState<string>('');
+  const [commentsLoading, setCommentsLoading] = useState<boolean>(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [submittingComment, setSubmittingComment] = useState<boolean>(false);
+
   useEffect(() => {
     if (projectName && teamName) {
       fetchTeamData();
     }
   }, [projectName, teamName]);
+
+  // Fetch comments when projectId and teamId become available
+  useEffect(() => {
+    if (projectId && teamId) {
+      fetchComments();
+    }
+  }, [projectId, teamId]);
 
   const fetchTeamData = async (forceRefresh: boolean = false) => {
     try {
@@ -341,6 +356,61 @@ export default function TeamDetailPage() {
     }
   };
 
+  // Fetch comments when we have both projectId and teamId
+  const fetchComments = async () => {
+    if (!projectId || !teamId) return;
+
+    try {
+      setCommentsLoading(true);
+      setCommentsError(null);
+
+      const response: ApiResponse<Comment[]> = await apiService.getComments(projectId, teamId);
+
+      if (apiService.isSuccess(response)) {
+        // Sort comments by creation date (newest first)
+        const sortedComments = response.data.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setComments(sortedComments);
+      } else {
+        setCommentsError(apiService.getErrorMessage(response));
+      }
+    } catch (err) {
+      setCommentsError('Failed to fetch comments. Please try again later.');
+      console.error('Error fetching comments:', err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || submittingComment || !projectId || !teamId) return;
+
+    try {
+      setSubmittingComment(true);
+      setCommentsError(null);
+
+      const response = await apiService.addComment(projectId, teamId, {
+        content: newComment.trim(),
+      });
+
+      if (apiService.isSuccess(response)) {
+        // Clear the input
+        setNewComment('');
+        // Refresh comments to show the new one
+        await fetchComments();
+      } else {
+        setCommentsError(apiService.getErrorMessage(response));
+      }
+    } catch (err) {
+      setCommentsError('Failed to add comment. Please try again.');
+      console.error('Error adding comment:', err);
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -526,7 +596,7 @@ export default function TeamDetailPage() {
                   Ask Ngũ Hổ Tướng
                 </h2>
               </div>
-              
+
               <div className="bg-gradient-to-r from-orange-50 to-red-50/30 rounded-xl border border-orange-200/50 p-4 h-80 flex flex-col">
                 {/* Chat Messages Area */}
                 <div className="flex-1 overflow-y-auto mb-4 space-y-3">
@@ -543,11 +613,10 @@ export default function TeamDetailPage() {
                     <>
                       {chatMessages.map((msg) => (
                         <div key={msg.id} className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
-                            msg.isUser 
-                              ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' 
-                              : 'bg-white border border-orange-200 text-gray-800'
-                          }`}>
+                          <div className={`max-w-xs px-3 py-2 rounded-lg text-sm ${msg.isUser
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+                            : 'bg-white border border-orange-200 text-gray-800'
+                            }`}>
                             <p>{msg.message}</p>
                             <p className={`text-xs mt-1 ${msg.isUser ? 'text-orange-100' : 'text-gray-500'}`}>
                               {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -569,7 +638,7 @@ export default function TeamDetailPage() {
                     </>
                   )}
                 </div>
-                
+
                 {/* Chat Input */}
                 <div className="flex gap-2">
                   <input
@@ -581,7 +650,7 @@ export default function TeamDetailPage() {
                     placeholder="Ask about your project..."
                     className="flex-1 px-3 py-2 border border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
-                  <button 
+                  <button
                     onClick={handleChatSubmit}
                     disabled={!chatInput.trim() || isChatLoading}
                     className="px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
@@ -682,6 +751,93 @@ export default function TeamDetailPage() {
                   Get started by adding your first {teamData.trackMethod === 'jira' ? 'Jira ticket' : 'Google Sheet'} using the button above.
                 </p>
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Comments Section */}
+        <div className="glass-card p-6 fade-in-delay-3">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Team Comments
+            </h2>
+          </div>
+
+          {/* Error Message */}
+          {commentsError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{commentsError}</p>
+            </div>
+          )}
+
+          {/* Add Comment Form */}
+          <form onSubmit={handleAddComment} className="mb-6">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Add a comment about this team..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none placeholder:text-gray-400 text-gray-900 transition-all duration-200"
+              rows={3}
+              disabled={submittingComment}
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                type="submit"
+                disabled={!newComment.trim() || submittingComment}
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              >
+                {submittingComment && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                )}
+                {submittingComment ? 'Adding...' : 'Add Comment'}
+              </button>
+            </div>
+          </form>
+
+          {/* Comments List */}
+          <div className="space-y-4">
+            {commentsLoading ? (
+              // Loading state
+              <div className="flex justify-center items-center py-8">
+                <div className="text-center">
+                  <TigerLoader size="md" className="mx-auto mb-2" />
+                  <p className="text-gray-600 text-sm">Loading comments...</p>
+                </div>
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 text-center py-4">No comments yet</p>
+                <p className="text-gray-400 text-sm">Be the first to share your thoughts about this team's progress!</p>
+              </div>
+            ) : (
+              comments.map((comment: Comment) => (
+                <div key={comment.id} className="border border-gray-200 rounded-xl p-4 bg-gradient-to-r from-gray-50 to-blue-50/30 hover:from-gray-100 hover:to-blue-50/50 transition-all duration-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <span className="font-semibold text-gray-900">Admin</span>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(comment.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 ml-10">{comment.comment}</p>
+                </div>
+              ))
             )}
           </div>
         </div>

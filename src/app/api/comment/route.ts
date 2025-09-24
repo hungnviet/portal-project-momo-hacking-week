@@ -10,12 +10,22 @@ export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
+    const teamId = searchParams.get('teamId');
 
     if (!projectId) {
       return NextResponse.json({
         status: 'error',
         errorCode: 'VALIDATION_ERROR',
         message: 'projectId is required',
+        data: null
+      }, { status: 400 });
+    }
+
+    if (!teamId) {
+      return NextResponse.json({
+        status: 'error',
+        errorCode: 'VALIDATION_ERROR',
+        message: 'teamId is required',
         data: null
       }, { status: 400 });
     }
@@ -50,7 +60,8 @@ export async function POST(request: NextRequest) {
 
     // Prepare comment data
     const commentData = {
-      projectid: parseInt(projectId),
+      projectId: parseInt(projectId),
+      teamId: parseInt(teamId),
       comment: content.trim(),
       created_at: time || new Date().toISOString()
     };
@@ -78,7 +89,8 @@ export async function POST(request: NextRequest) {
       message: 'Comment added successfully',
       data: {
         commentId: insertedComment.id,
-        projectId: insertedComment.projectid,
+        projectId: insertedComment.projectId,
+        teamId: insertedComment.teamId,
         content: insertedComment.comment,
         createdAt: insertedComment.created_at
       }
@@ -99,6 +111,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
+    const teamId = searchParams.get('teamId');
 
     if (!projectId) {
       return NextResponse.json({
@@ -109,11 +122,21 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
+    if (!teamId) {
+      return NextResponse.json({
+        status: 'error',
+        errorCode: 'VALIDATION_ERROR',
+        message: 'teamId is required',
+        data: null
+      }, { status: 400 });
+    }
+
     // Get comments for the project
     const { data: comments, error: commentsError } = await supabase
       .from('Comment')
       .select('*')
-      .eq('projectid', projectId)
+      .eq('projectId', projectId)
+      .eq('teamId', teamId)
       .order('created_at', { ascending: false });
 
     if (commentsError) {
