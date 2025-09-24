@@ -70,15 +70,15 @@ export default function HomePage() {
 
     // Determine if project has tasks
     const hasTasks = taskProgress && taskProgress.totalTasks > 0;
-    
+
     // If no tasks, it's in planning phase
     const effectiveStatus = !hasTasks ? 'Planning' : project.status;
-    
+
     // Calculate progress based on tasks only
     let effectiveProgress = 0;
     if (hasTasks && taskProgress) {
       // Progress is calculated as (done tasks / total tasks) * 100
-      effectiveProgress = taskProgress.totalTasks > 0 
+      effectiveProgress = taskProgress.totalTasks > 0
         ? Math.round((taskProgress.doneTasks / taskProgress.totalTasks) * 100)
         : 0;
     }
@@ -136,7 +136,7 @@ export default function HomePage() {
           <svg className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          <span className="hidden sm:inline">Create New Project</span>
+          <span className="hidden sm:inline">Create Request</span>
           <span className="sm:hidden">Create</span>
         </button>
       </Header>

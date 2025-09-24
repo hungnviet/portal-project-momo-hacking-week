@@ -292,7 +292,7 @@ export default function ProjectDetailPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-              Contributing Teams
+              Delivery Teams
             </h2>
             <div className="flex-1 h-px bg-gradient-to-r from-pink-200 to-transparent"></div>
           </div>

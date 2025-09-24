@@ -193,7 +193,7 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
           <div className="bg-gradient-to-r from-pink-400 to-blue-400 px-8 py-6 text-white">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold mb-1">Create New Project</h2>
+                <h2 className="text-2xl font-bold mb-1">Create Request</h2>
                 <p className="text-indigo-100">Set up a new project and configure teams</p>
               </div>
               <button
@@ -287,9 +287,9 @@ export default function CreateProjectPopup({ isOpen, onClose, onProjectCreated }
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                         <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
-                        Contributing Teams
+                        Delivery Teams
                       </h3>
-                      <p className="text-gray-600 text-sm mt-1">Add teams that will work on this project</p>
+                      <p className="text-gray-600 text-sm mt-1">Add teams that will work on this request</p>
                     </div>
                     <button
                       type="button"

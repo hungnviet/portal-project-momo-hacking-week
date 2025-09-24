@@ -16,8 +16,8 @@ interface HeaderProps {
 }
 
 export default function Header({
-    title = 'BU Project Portal',
-    subtitle = 'Manage and monitor your business unit projects',
+    title = 'Request Hub',
+    subtitle = 'Centralize decentralized workflows',
     showBackButton = false,
     backHref = '/',
     onRefresh,
