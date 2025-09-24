@@ -8,6 +8,7 @@ export interface JiraTicketGeneralInfo {
   assignee?: string;
   startdate: string;
   duedate: string;
+  updated: string;
   // Additional useful fields
   ticketKey: string;
   projectName: string;
@@ -117,6 +118,7 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
         'issuetype',
         'startdate',
         'duedate',
+        'updated'
       ].join(',')
     });
 
@@ -155,6 +157,7 @@ async function fetchSingleTicketGeneralInfo(jiraUrl: string): Promise<JiraTicket
       assignee: rawData.fields.assignee?.displayName,
       startdate: rawData.fields.startdate || '',
       duedate: rawData.fields.duedate || '',
+      updated: rawData.fields.updated || '',
       projectName: rawData.fields.project?.name || 'Unknown Project',
       ticketType: rawData.fields.issuetype?.name || 'Unknown',
       url: jiraUrl

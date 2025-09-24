@@ -86,6 +86,7 @@ interface TaskData {
     assignee: string;
     startdate: string;
     duedate: string;
+    updated: string;
     ticketKey: string;
     projectName: string;
     ticketType: string;

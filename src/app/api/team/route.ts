@@ -114,6 +114,7 @@ export async function GET(request: NextRequest) {
           assignee: ticket.assignee,
           startdate: ticket.startdate,
           duedate: ticket.duedate,
+          updated: ticket.updated,
           ticketKey: ticket.ticketKey,
           projectName: ticket.projectName,
           ticketType: ticket.ticketType,
