@@ -7,6 +7,7 @@ import TicketCard from '../../../components/TicketCard';
 import TeamHeader from '../../../components/TeamHeader';
 import TigerLoader from '../../../components/TigerLoader';
 import Header from '../../../components/Header';
+import BurndownChart from '../../../components/BurndownChart';
 import { type TeamApiResponse, type TaskData, type ApiResponse, type Project, type ProjectDetails, type AddTaskRequest, type AddTaskResponse, type Comment, type AddCommentRequest } from '../../../service';
 import { CachedApiService } from '../../../services/cachedApiService';
 import { apiService } from '../../../service';
@@ -259,7 +260,7 @@ export default function TeamDetailPage() {
 
       console.log('Request data for summary:', requestData);
       console.log('Sample task with description:', tasksTable[0]);
-  
+
 
       const response = await fetch('/api/summarize', {
         method: 'POST',
@@ -356,7 +357,7 @@ export default function TeamDetailPage() {
     try {
       // Prepare the request payload
       const isFirstMessage = chatMessages.length === 0;
-      
+
       let requestPayload: any = {
         sessionId: chatSessionId,
         message: currentMessage
@@ -401,7 +402,7 @@ export default function TeamDetailPage() {
       }
 
       const data = await response.json();
-      
+
       if (data.error) {
         throw new Error(data.error);
       }
@@ -417,7 +418,7 @@ export default function TeamDetailPage() {
 
     } catch (error) {
       console.error('Error in chat:', error);
-      
+
       const errorResponse = {
         id: (Date.now() + 1).toString(),
         message: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
@@ -589,7 +590,7 @@ export default function TeamDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50/30">
       <Header
-        title={teamData.name}
+        title="Delivered Team"
         showBackButton={true}
         backHref={`/${projectName}`}
         onRefresh={handleRefreshData}
@@ -601,6 +602,13 @@ export default function TeamDetailPage() {
         <div className="mb-8 fade-in">
           <TeamHeader team={{ ...teamData, tickets: teamData.tickets }} />
         </div>
+
+        {/* Burndown Chart
+        {projectId && teamId && (
+          <div className="mb-8 fade-in-delay-1">
+            <BurndownChart projectId={projectId} teamId={teamId} />
+          </div>
+        )} */}
 
         {/* Tickets Section */}
         <div className="glass-card p-6 fade-in-delay-2">
@@ -686,7 +694,7 @@ export default function TeamDetailPage() {
         </div>
 
         {/* Generate Summary Section */}
-        <div className="glass-card p-6 mb-8 fade-in-delay-1">
+        <div className="glass-card p-6 mb-8 fade-in-delay-1 mt-2">
           <div className="flex gap-6">
             {/* Project Summary Section - 2/3 width */}
             <div className="flex-1 w-2/3">
@@ -734,7 +742,7 @@ export default function TeamDetailPage() {
                     Generated Summary
                   </h3>
                   <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                    <div dangerouslySetInnerHTML={{ 
+                    <div dangerouslySetInnerHTML={{
                       __html: summary
                         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
                         .replace(/\*(.*?)\*/g, '<em class="italic text-gray-800">$1</em>')
@@ -768,7 +776,7 @@ export default function TeamDetailPage() {
 
             {/* Chat Box Section - 1/3 width */}
             <div className="w-1/3">
-                <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="relative">
                   <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -832,9 +840,9 @@ export default function TeamDetailPage() {
                             {msg.isUser ? (
                               <p>{msg.message}</p>
                             ) : (
-                              <div 
+                              <div
                                 className="prose prose-xs max-w-none"
-                                dangerouslySetInnerHTML={{ 
+                                dangerouslySetInnerHTML={{
                                   __html: msg.message
                                     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
                                     .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
@@ -842,7 +850,7 @@ export default function TeamDetailPage() {
                                     .replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-800 px-1 rounded text-xs">$1</code>')
                                     .replace(/\n\n/g, '<br><br>')
                                     .replace(/\n/g, '<br>')
-                                }} 
+                                }}
                               />
                             )}
                             <p className={`text-xs mt-1 ${msg.isUser ? 'text-orange-100' : 'text-gray-500'}`}>
@@ -899,7 +907,7 @@ export default function TeamDetailPage() {
           </div>
         </div>
 
-        
+
 
         {/* Comments Section */}
         <div className="glass-card p-6 fade-in-delay-3">

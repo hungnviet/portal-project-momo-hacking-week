@@ -7,6 +7,7 @@ import ProjectProgress from '../../components/ProjectProgress';
 import TeamSection from '../../components/TeamSection';
 import TigerLoader from '../../components/TigerLoader';
 import Header from '../../components/Header';
+import BurndownChart from '../../components/BurndownChart';
 import { ProjectDetails, ApiResponse, Project } from '../../service';
 import { CachedApiService } from '../../services/cachedApiService';
 import { useTaskStatus } from '../../contexts/TaskStatusContext';
@@ -96,7 +97,7 @@ export default function ProjectDetailPage() {
     const today = new Date();
     const start = new Date(startDate);
     const due = new Date(dueDate);
-    
+
     // Set time to start of day for accurate comparison
     today.setHours(0, 0, 0, 0);
     start.setHours(0, 0, 0, 0);
@@ -104,7 +105,7 @@ export default function ProjectDetailPage() {
 
     // Get project progress from task status context
     const projectProgress = getProjectProgress(projectId);
-    
+
     // If all tasks are done (using actual task data)
     if (projectProgress && projectProgress.totalTasks > 0) {
       if (projectProgress.doneTasks === projectProgress.totalTasks) {
@@ -281,7 +282,7 @@ export default function ProjectDetailPage() {
                   {(() => {
                     const projectStatus = calculateProjectStatus(
                       parseInt(project.projectId.toString()),
-                      project.startDate, 
+                      project.startDate,
                       project.dueDate
                     );
                     return (
@@ -311,7 +312,7 @@ export default function ProjectDetailPage() {
                     {project.projectName}
                   </span>
                 </div>
-                
+
                 <div className="space-y-2">
                   <p className="text-sm text-gray-500">{project.projectDesc}</p>
                   <div className="flex items-center gap-4 text-xs text-gray-400">
@@ -369,6 +370,11 @@ export default function ProjectDetailPage() {
           <div className="mb-6">
             <ProjectProgress progress={getEnhancedProjectProgress()} />
           </div>
+        </div>
+
+        {/* Project Burndown Chart */}
+        <div className="mb-8 fade-in-delay-1">
+          <BurndownChart projectId={parseInt(project.projectId.toString())} />
         </div>
 
         {/* Teams Section */}
