@@ -62,21 +62,31 @@ export default function AnalyticsDashboard({ projects, isOpen, onClose }: Analyt
     { name: 'Pending', value: pendingTasks, color: '#6B7280', percentage: totalTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0 }
   ];
 
-  // Team workload (teams with most projects)
-  const teamWorkload = uniqueTeams.map(team => ({
-    name: team,
-    projects: projects.filter(p => p.teams.includes(team)).length,
-    tasks: projects.filter(p => p.teams.includes(team)).reduce((sum, p) => sum + (p.taskStats?.totalTasks || 0), 0)
-  })).sort((a, b) => b.projects - a.projects);
+  // Team workload with task status breakdown
+  const teamWorkload = uniqueTeams.map(team => {
+    const teamProjects = projects.filter(p => p.teams.includes(team));
+    const doneTasks = teamProjects.reduce((sum, p) => sum + (p.taskStats?.doneTasks || 0), 0);
+    const inProgressTasks = teamProjects.reduce((sum, p) => sum + (p.taskStats?.inProgressTasks || 0), 0);
+    const totalTasks = teamProjects.reduce((sum, p) => sum + (p.taskStats?.totalTasks || 0), 0);
+    const pendingTasks = totalTasks - doneTasks - inProgressTasks;
+    
+    return {
+      name: team,
+      projects: teamProjects.length,
+      tasks: totalTasks,
+      doneTasks,
+      inProgressTasks,
+      pendingTasks
+    };
+  }).sort((a, b) => b.tasks - a.tasks);
 
-  // Project progress distribution
+  // Project progress distribution (5 columns)
   const progressRanges = [
-    { name: '0%', count: projects.filter(p => p.progress === 0).length },
-    { name: '1-25%', count: projects.filter(p => p.progress > 0 && p.progress <= 25).length },
-    { name: '26-50%', count: projects.filter(p => p.progress > 25 && p.progress <= 50).length },
-    { name: '51-75%', count: projects.filter(p => p.progress > 50 && p.progress <= 75).length },
-    { name: '76-99%', count: projects.filter(p => p.progress > 75 && p.progress < 100).length },
-    { name: '100%', count: projects.filter(p => p.progress === 100).length }
+    { name: '0%', count: projects.filter(p => p.progress === 0).length, color: '#EF4444' },
+    { name: '25%', count: projects.filter(p => p.progress > 0 && p.progress <= 25).length, color: '#F59E0B' },
+    { name: '50%', count: projects.filter(p => p.progress > 25 && p.progress <= 50).length, color: '#3B82F6' },
+    { name: '75%', count: projects.filter(p => p.progress > 50 && p.progress <= 75).length, color: '#8B5CF6' },
+    { name: '100%', count: projects.filter(p => p.progress > 75).length, color: '#10B981' }
   ];
 
   const maxProgressCount = Math.max(...progressRanges.map(r => r.count));
@@ -169,6 +179,104 @@ export default function AnalyticsDashboard({ projects, isOpen, onClose }: Analyt
     );
   };
 
+  const ColumnChart = ({ data, title }: { data: any[], title: string }) => {
+    const maxValue = Math.max(...data.map(item => item.tasks));
+    
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        <div className="flex items-end space-x-4 h-64 overflow-x-auto">
+          {data.slice(0, 10).map((team, index) => (
+            <div key={team.name} className="flex flex-col items-center min-w-16">
+              <div 
+                className="w-12 bg-gray-200 rounded-t flex flex-col-reverse relative"
+                style={{ height: `${Math.max((team.tasks / maxValue) * 200, 20)}px` }}
+              >
+                {/* Done tasks (green) */}
+                {team.doneTasks > 0 && (
+                  <div 
+                    className="bg-green-500 rounded-b flex items-center justify-center"
+                    style={{ 
+                      height: `${(team.doneTasks / team.tasks) * 100}%`,
+                      minHeight: team.doneTasks > 0 ? '8px' : '0px'
+                    }}
+                  >
+                    {team.doneTasks > 0 && (
+                      <span className="text-white text-xs font-bold">
+                        {team.doneTasks}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* In Progress tasks (blue) */}
+                {team.inProgressTasks > 0 && (
+                  <div 
+                    className="bg-blue-500 flex items-center justify-center"
+                    style={{ 
+                      height: `${(team.inProgressTasks / team.tasks) * 100}%`,
+                      minHeight: team.inProgressTasks > 0 ? '8px' : '0px'
+                    }}
+                  >
+                    {team.inProgressTasks > 0 && (
+                      <span className="text-white text-xs font-bold">
+                        {team.inProgressTasks}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Pending tasks (gray) */}
+                {team.pendingTasks > 0 && (
+                  <div 
+                    className="bg-gray-500 rounded-t flex items-center justify-center"
+                    style={{ 
+                      height: `${(team.pendingTasks / team.tasks) * 100}%`,
+                      minHeight: team.pendingTasks > 0 ? '8px' : '0px'
+                    }}
+                  >
+                    {team.pendingTasks > 0 && (
+                      <span className="text-white text-xs font-bold">
+                        {team.pendingTasks}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Total count at top */}
+                <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+                  <span className="text-xs font-semibold text-gray-700 bg-white px-1 rounded">
+                    {team.tasks}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mt-2 text-xs text-gray-600 text-center max-w-16 truncate" title={team.name}>
+                {team.name}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Legend */}
+        <div className="flex justify-center space-x-6 mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+            <span className="text-sm text-gray-600">Done</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+            <span className="text-sm text-gray-600">In Progress</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-gray-500 rounded mr-2"></div>
+            <span className="text-sm text-gray-600">Pending</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-white/20 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
@@ -243,11 +351,42 @@ export default function AnalyticsDashboard({ projects, isOpen, onClose }: Analyt
 
           {activeTab === 'projects' && (
             <div className="space-y-6">
-              <BarChart 
-                data={progressRanges} 
-                title="Project Progress Distribution" 
-                color="#8B5CF6"
-              />
+              {/* Project Progress Distribution - Column Chart */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Progress Distribution</h3>
+                <div className="flex items-end justify-center space-x-8 h-64">
+                  {progressRanges.map((range, index) => (
+                    <div key={range.name} className="flex flex-col items-center">
+                      <div 
+                        className="w-16 rounded-t transition-all duration-500 flex items-end justify-center pb-2 relative"
+                        style={{ 
+                          height: `${Math.max((range.count / Math.max(...progressRanges.map(r => r.count))) * 200, range.count > 0 ? 20 : 8)}px`,
+                          backgroundColor: range.color
+                        }}
+                      >
+                        {range.count > 0 && (
+                          <>
+                            <span className="text-white font-bold text-sm">
+                              {range.count}
+                            </span>
+                            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+                              <span className="text-xs font-semibold text-gray-700 bg-white px-2 py-1 rounded shadow-sm">
+                                {range.count}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div className="mt-3 text-sm font-medium text-gray-700">
+                        {range.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-gray-500">Number of projects by progress range</p>
+                </div>
+              </div>
               
               {/* Project Details Table */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -307,45 +446,11 @@ export default function AnalyticsDashboard({ projects, isOpen, onClose }: Analyt
           )}
 
           {activeTab === 'teams' && (
-            <div className="space-y-6">
-              <BarChart 
-                data={teamWorkload.slice(0, 10)} 
-                title="Team Workload (Top 10 by Projects)" 
-                color="#10B981"
+              <ColumnChart 
+                data={teamWorkload} 
+                title="Team Task Status Distribution" 
               />
-              
-              {/* Team Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b">
-                  <h3 className="text-lg font-semibold text-gray-900">Team Statistics</h3>
-                </div>
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {teamWorkload.map((team, index) => (
-                      <div key={team.name} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900 truncate">{team.name}</h4>
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                            #{index + 1}
-                          </span>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Projects:</span>
-                            <span className="font-medium text-green-700">{team.projects}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Tasks:</span>
-                            <span className="font-medium text-green-700">{team.tasks}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+              )}
 
           {activeTab === 'tasks' && (
             <div className="space-y-6">

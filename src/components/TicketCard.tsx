@@ -8,6 +8,7 @@ interface Ticket {
   duedate: string;
   type: string;
   url: string;
+  ticketDescription: string;
 }
 
 interface TicketCardProps {
@@ -70,6 +71,9 @@ export default function TicketCard({ ticket }: TicketCardProps) {
             </span>
           )}
         </div>
+      </div>
+      <div>
+        <p className="mt-1 text-sm text-gray-500">{ticket.ticketDescription}</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">

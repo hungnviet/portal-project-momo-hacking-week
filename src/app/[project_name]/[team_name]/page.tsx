@@ -27,6 +27,7 @@ interface TeamData {
   tickets: Array<{
     id: string;
     title: string;
+    ticketDescription: string;
     status: string;
     assignee: string;
     priority: string;
@@ -46,11 +47,12 @@ const transformTaskToTicket = (task: TaskData, index: number) => {
   return {
     id: task.id,
     title: task.ticketName,
+    ticketDescription: task.ticketDescription || 'No description provided',
     status: task.ticketStatus,
-    assignee: task.assignee, // Use team assignee as fallback
-    priority: task.ticketPriority || 'Medium', // Use API priority or default
-    startdate: task.startdate || '', // Use API startdate or today
-    duedate: task.duedate || '', // Use API duedate or today
+    assignee: task.assignee,
+    priority: task.ticketPriority || 'Medium',
+    startdate: task.startdate || '',
+    duedate: task.duedate || '',
     url: task.url,
     type: isJira ? 'jira' as const : 'sheet' as const,
   };
@@ -228,7 +230,8 @@ export default function TeamDetailPage() {
       // Transform team data into the format expected by the API
       const tasksTable = teamData.tickets.map(ticket => ({
         id: ticket.id,
-        ticketName: ticket.title,
+        title: ticket.title,
+        description: ticket.ticketDescription,
         assignee: ticket.assignee,
         ticketStatus: ticket.status,
         ticketPriority: ticket.priority,
@@ -243,6 +246,10 @@ export default function TeamDetailPage() {
         teamDescription: teamData.description,
         tasksTable: tasksTable
       };
+
+      console.log('Request data for summary:', requestData);
+      console.log('Sample task with description:', tasksTable[0]);
+  
 
       const response = await fetch('/api/summarize', {
         method: 'POST',
