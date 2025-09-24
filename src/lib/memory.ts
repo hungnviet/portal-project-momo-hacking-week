@@ -1,10 +1,21 @@
-// lib/memory.ts
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
-const memoryStore = new Map<string, ChatCompletionMessageParam[]>();
+const memoryStore = new Map<
+  string,
+  { messages: ChatCompletionMessageParam[]; context?: string }
+>();
 
 export function getMemory(sessionId: string): ChatCompletionMessageParam[] {
-  return memoryStore.get(sessionId) || [];
+  return memoryStore.get(sessionId)?.messages || [];
+}
+
+export function getContext(sessionId: string): string | undefined {
+  return memoryStore.get(sessionId)?.context;
+}
+
+export function setContext(sessionId: string, context: string) {
+  const existing = memoryStore.get(sessionId) || { messages: [] };
+  memoryStore.set(sessionId, { ...existing, context });
 }
 
 export function addMessage(
@@ -12,10 +23,15 @@ export function addMessage(
   role: "user" | "assistant",
   content: string
 ) {
-  const history = memoryStore.get(sessionId) || [];
-  history.push({ role, content }); // ✅ Now matches ChatCompletionMessageParam
+  const existing = memoryStore.get(sessionId) || { messages: [] };
+  const history = existing.messages;
+
+  history.push({ role, content });
 
   // Keep last N messages
   const MAX_MEMORY = 6;
-  memoryStore.set(sessionId, history.slice(-MAX_MEMORY));
+  memoryStore.set(sessionId, {
+    ...existing,
+    messages: history.slice(-MAX_MEMORY),
+  });
 }

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { TaskData } from '@/service';
+import { convertTicketsToMarkdown } from "@/utils/preprocess_context"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -12,14 +13,7 @@ async function getContextByTeamAndProject(
   tasksTable: TaskData[]
 ): Promise<string> {
 
-    const tasksTable_modified = `
-  | Task | Assignee | Due Date | Priority | Status | Notes |
-  |------|----------|----------|----------|--------|-------|
-  | Setup Nginx gateway | Loc | 2025-09-25 | High | In Progress | 80% done |
-  | Build booking API | Alice | 2025-09-27 | High | Not Started | Waiting for DB schema |
-  | Design DB schema | Bob | 2025-09-23 | High | Completed | Reviewed by backend team |
-  | Implement caching layer | Carol | 2025-09-28 | Medium | In Progress | Redis container running |
-    `;
+  const tasksTable_modified = await convertTicketsToMarkdown(tasksTable);
   const prompt = `
 Generate a structured progress report based on the provided project context and task details.
 
