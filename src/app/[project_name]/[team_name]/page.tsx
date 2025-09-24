@@ -575,7 +575,24 @@ export default function TeamDetailPage() {
                     </svg>
                     Generated Summary
                   </h3>
-                  <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{summary}</div>
+                  <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                    <div dangerouslySetInnerHTML={{ 
+                      __html: summary
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                        .replace(/\*(.*?)\*/g, '<em class="italic text-gray-800">$1</em>')
+                        .replace(/^### (.*$)/gm, '<h3 class="text-base font-bold text-gray-900 mt-4 mb-2 border-b border-gray-200 pb-1">$1</h3>')
+                        .replace(/^## (.*$)/gm, '<h2 class="text-lg font-bold text-gray-900 mt-5 mb-3 border-b-2 border-indigo-200 pb-2">$1</h2>')
+                        .replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold text-gray-900 mt-6 mb-4 border-b-2 border-indigo-300 pb-2">$1</h1>')
+                        .replace(/^\- (.*$)/gm, '<li class="ml-4 mb-1 list-disc list-inside text-gray-700">$1</li>')
+                        .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 mb-1 list-decimal list-inside text-gray-700">$1</li>')
+                        .replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-xs font-mono">$1</code>')
+                        .replace(/\n\n/g, '</p><p class="mb-3">')
+                        .replace(/^(?!<[h|l|c])/gm, '<p class="mb-3">')
+                        .replace(/<\/p><p class="mb-3">(<[h|l])/g, '$1')
+                        .replace(/(<\/[h]\d>)\n/g, '$1')
+                        .replace(/\n$/, '</p>')
+                    }} />
+                  </div>
                 </div>
               )}
 
