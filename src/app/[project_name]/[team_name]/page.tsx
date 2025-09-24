@@ -300,26 +300,14 @@ export default function TeamDetailPage() {
         url: linkInput.trim()
       };
 
-      const response = await fetch('/api/task', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(addTaskRequest)
-      });
+      const response = await apiService.addTask(teamId, projectId, addTaskRequest);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result: AddTaskResponse = await response.json();
-
-      if (result.taskId) {
+      if (apiService.isSuccess(response)) {
         // Refresh data to show the new task
         await fetchTeamData(true);
         alert('Task added successfully!');
       } else {
-        alert('Failed to add task');
+        alert(apiService.getErrorMessage(response) || 'Failed to add task');
       }
 
     } catch (error) {

@@ -56,7 +56,6 @@ export async function getSheetRowData(rowUrl: string): Promise<DynamicTaskRowDat
     }
 
     const headerFields = headerResponse.data.values[0] as string[];
-    console.log('Header fields found:', headerFields);
 
     // Get the data row
     const dataRange = `${sheetName}!${targetRowNumber}:${targetRowNumber}`;
@@ -139,7 +138,6 @@ export async function getMultipleSheetRowsData(rowUrls: string[]): Promise<Dynam
       // Continue with other URLs even if one fails
     }
   }
-
   return results;
 }
 
